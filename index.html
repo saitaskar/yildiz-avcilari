@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Görev Portalı</title>
+<style>
+  :root{
+    --primary:#6C2BD9;      /* mor */
+    --primary-dark:#4A148C;
+    --accent:#FF7A18;       /* turuncu */
+    --green:#2E7D32;
+    --red:#C62828;
+    --amber:#F9A825;
+    --blue:#0066FF;
+    --bg:#F4F1FB;
+    --card:#FFFFFF;
+    --text:#1F1235;
+    --muted:#7A6F94;
+    --line:#E7E0F5;
+    --radius:18px;
+    --shadow:0 6px 24px rgba(76,20,140,.10);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .hidden{display:none !important;}
+  button{font-family:inherit;cursor:pointer;border:none;}
+  input,textarea,select{font-family:inherit;font-size:16px;}
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    position:sticky;top:0;z-index:50;
+    background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+    color:#fff;padding:14px 18px;
+    display:flex;align-items:center;justify-content:space-between;
+    box-shadow:0 4px 16px rgba(0,0,0,.12);
+  }
+  .topbar .brand{font-weight:800;font-size:18px;letter-spacing:.3px;display:flex;align-items:center;gap:8px;}
+  .topbar .who{font-size:13px;opacity:.92;display:flex;align-items:center;gap:10px;}
+  .topbar .who b{font-weight:700;}
+  .btn-logout{background:rgba(255,255,255,.18);color:#fff;border-radius:12px;padding:7px 12px;font-size:13px;font-weight:600;}
+  .btn-logout:active{background:rgba(255,255,255,.3);}
+
+  .wrap{max-width:760px;margin:0 auto;padding:18px 16px 80px;}
+
+  /* ---------- Cards ---------- */
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:16px;}
+  .card h2{margin:0 0 4px;font-size:17px;}
+  .card .sub{color:var(--muted);font-size:13px;margin-bottom:14px;}
+
+  /* ---------- Login ---------- */
+  .login-hero{text-align:center;padding:30px 16px 10px;}
+  .login-hero .logo{font-size:54px;}
+  .login-hero h1{margin:8px 0 2px;font-size:26px;color:var(--primary-dark);}
+  .login-hero p{color:var(--muted);margin:0;font-size:14px;}
+  .role-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:18px 0;}
+  .role-btn{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:16px 8px;text-align:center;font-weight:700;font-size:13px;color:var(--text);transition:.15s;}
+  .role-btn .ico{font-size:30px;display:block;margin-bottom:6px;}
+  .role-btn.active{border-color:var(--primary);background:#F3ECFF;color:var(--primary-dark);}
+  .name-list{display:flex;flex-direction:column;gap:8px;margin-top:6px;}
+  .name-item{display:flex;align-items:center;gap:12px;background:#FAF8FF;border:2px solid var(--line);border-radius:14px;padding:12px 14px;font-weight:600;transition:.15s;}
+  .name-item .av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;background:#EDE4FF;flex-shrink:0;}
+  .name-item small{display:block;color:var(--muted);font-weight:500;font-size:12px;}
+  .name-item.active{border-color:var(--primary);background:#F3ECFF;}
+  .pin-box{margin-top:16px;text-align:center;}
+  .pin-dots{display:flex;justify-content:center;gap:12px;margin:14px 0;}
+  .pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--primary);}
+  .pin-dot.filled{background:var(--primary);}
+  .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:260px;margin:0 auto;}
+  .key{background:#fff;border:2px solid var(--line);border-radius:14px;padding:16px 0;font-size:22px;font-weight:700;color:var(--text);}
+  .key:active{background:#F3ECFF;}
+  .key.wide{font-size:15px;font-weight:600;color:var(--muted);}
+  .pin-err{color:var(--red);font-size:13px;font-weight:600;height:18px;}
+
+  /* ---------- Silhouette / progress ---------- */
+  .hero-card{background:linear-gradient(160deg,#3A1D6E,#6C2BD9);color:#fff;position:relative;overflow:hidden;}
+  .hero-card h2{color:#fff;}
+  .hero-card .sub{color:rgba(255,255,255,.75);}
+  .silo-stage{position:relative;height:200px;display:flex;align-items:center;justify-content:center;margin:6px 0 10px;}
+  .silo-glow{position:absolute;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(255,122,24,.45),transparent 65%);filter:blur(8px);}
+  .silo-img{position:relative;width:160px;height:auto;transition:filter 1s ease, opacity 1s ease;}
+  .silo-q{position:absolute;font-size:90px;font-weight:900;color:rgba(255,255,255,.85);text-shadow:0 4px 18px rgba(0,0,0,.3);transition:opacity .6s;}
+  .reveal-label{text-align:center;font-weight:700;font-size:15px;margin-top:2px;min-height:20px;}
+  .xpbar-wrap{margin-top:10px;}
+  .xpbar-top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;font-weight:600;}
+  .xpbar{height:16px;background:rgba(255,255,255,.18);border-radius:10px;overflow:hidden;}
+  .xpbar-fill{height:100%;background:linear-gradient(90deg,var(--accent),#FFD166);border-radius:10px;width:0;transition:width 1s ease;}
+  .pct-big{font-size:13px;opacity:.85;text-align:center;margin-top:8px;}
+
+  /* ---------- Task list ---------- */
+  .seg{display:flex;gap:8px;margin-bottom:14px;background:#EFE9FB;padding:5px;border-radius:14px;}
+  .seg button{flex:1;background:transparent;border-radius:10px;padding:9px 0;font-weight:700;font-size:13px;color:var(--muted);}
+  .seg button.active{background:#fff;color:var(--primary-dark);box-shadow:0 2px 8px rgba(0,0,0,.06);}
+
+  .task{display:flex;align-items:center;gap:12px;padding:12px;border:2px solid var(--line);border-radius:14px;margin-bottom:10px;transition:.15s;}
+  .task .t-ico{width:46px;height:46px;border-radius:12px;background:#F3ECFF;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;}
+  .task .t-body{flex:1;min-width:0;}
+  .task .t-title{font-weight:700;font-size:15px;}
+  .task .t-meta{font-size:12px;color:var(--muted);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;}
+  .chip.xp{background:#FFF1E0;color:var(--accent);}
+  .chip.win{background:#E8F0FF;color:var(--blue);}
+  .chip.done{background:#E6F4EA;color:var(--green);}
+  .chip.pending{background:#FFF8E1;color:#B7791F;}
+  .chip.count{background:#F0ECFA;color:var(--primary);}
+  .t-action{flex-shrink:0;}
+  .btn-do{background:var(--primary);color:#fff;border-radius:12px;padding:10px 16px;font-weight:700;font-size:14px;}
+  .btn-do:active{background:var(--primary-dark);}
+  .btn-do:disabled{background:#D8CFEC;color:#fff;}
+  .task.locked{opacity:.55;}
+  .task.complete{border-color:#CDEBD3;background:#F4FBF5;}
+  .task.waiting{border-color:#FCEFC7;background:#FFFDF6;}
+
+  /* ---------- Approver ---------- */
+  .approve-card{border:2px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;}
+  .approve-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .approve-head .av{width:34px;height:34px;border-radius:50%;background:#EDE4FF;display:flex;align-items:center;justify-content:center;font-size:18px;}
+  .approve-head b{font-size:14px;}
+  .approve-head small{color:var(--muted);font-size:12px;display:block;}
+  .proof-box{background:#FAF8FF;border-radius:12px;padding:10px 12px;font-size:14px;margin:8px 0;border:1px solid var(--line);}
+  .proof-box img{max-width:100%;border-radius:10px;margin-top:6px;display:block;}
+  .ai-note{background:#EEF6FF;border-left:3px solid var(--blue);padding:8px 12px;border-radius:8px;font-size:13px;margin:8px 0;color:#1A4D8F;}
+  .approve-actions{display:flex;gap:10px;margin-top:10px;}
+  .btn-ok{flex:1;background:var(--green);color:#fff;border-radius:12px;padding:11px;font-weight:700;}
+  .btn-no{flex:1;background:#fff;border:2px solid var(--red);color:var(--red);border-radius:12px;padding:11px;font-weight:700;}
+
+  /* ---------- Leaderboard ---------- */
+  .lb-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);}
+  .lb-row:last-child{border-bottom:none;}
+  .lb-rank{width:30px;text-align:center;font-weight:800;font-size:18px;color:var(--muted);}
+  .lb-rank.gold{color:#E8A100;}
+  .lb-av{width:40px;height:40px;border-radius:50%;background:#EDE4FF;display:flex;align-items:center;justify-content:center;font-size:20px;}
+  .lb-body{flex:1;}
+  .lb-body b{font-size:15px;}
+  .lb-mini{height:8px;background:#EFE9FB;border-radius:6px;margin-top:5px;overflow:hidden;}
+  .lb-mini span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#FFD166);}
+  .lb-xp{font-weight:800;color:var(--primary);font-size:15px;}
+
+  /* ---------- Modal ---------- */
+  .modal-bg{position:fixed;inset:0;background:rgba(31,18,53,.55);z-index:100;display:flex;align-items:flex-end;justify-content:center;padding:0;}
+  .modal{background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:760px;padding:22px 20px 30px;animation:slideUp .25s ease;}
+  @keyframes slideUp{from{transform:translateY(40px);opacity:.6;}to{transform:translateY(0);opacity:1;}}
+  .modal h3{margin:0 0 4px;font-size:18px;}
+  .modal .msub{color:var(--muted);font-size:13px;margin-bottom:14px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-weight:600;font-size:13px;margin-bottom:6px;}
+  .field textarea,.field input[type=text]{width:100%;border:2px solid var(--line);border-radius:12px;padding:12px;resize:vertical;}
+  .field textarea:focus,.field input:focus{outline:none;border-color:var(--primary);}
+  .photo-pick{border:2px dashed var(--line);border-radius:14px;padding:20px;text-align:center;color:var(--muted);font-size:14px;}
+  .photo-pick img{max-width:100%;border-radius:10px;margin-top:8px;}
+  .modal-actions{display:flex;gap:10px;margin-top:6px;}
+  .btn-primary{flex:1;background:var(--primary);color:#fff;border-radius:14px;padding:14px;font-weight:700;font-size:15px;}
+  .btn-ghost{background:#F0ECFA;color:var(--muted);border-radius:14px;padding:14px 18px;font-weight:700;}
+
+  /* ---------- Admin ---------- */
+  .admin-task{display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--line);font-size:14px;}
+  .admin-task .e{font-size:22px;}
+  .admin-task .g{flex:1;}
+  .admin-task small{color:var(--muted);font-size:12px;}
+  .kv{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px;}
+  .kv b{color:var(--primary-dark);}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:12px 20px;border-radius:30px;font-size:14px;font-weight:600;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.3);animation:pop .3s ease;}
+  @keyframes pop{from{transform:translateX(-50%) scale(.9);opacity:0;}to{transform:translateX(-50%) scale(1);opacity:1;}}
+  .empty{text-align:center;color:var(--muted);padding:30px 10px;font-size:14px;}
+  .empty .e{font-size:40px;display:block;margin-bottom:8px;}
+
+  /* ---------- RPG WIZARD ---------- */
+  .wizard{position:fixed;inset:0;z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:26px 20px;text-align:center;overflow-y:auto;background:#070A14;color:#fff;}
+  .wizard.starfield{background:radial-gradient(1px 1px at 20% 30%,#fff,transparent),radial-gradient(1px 1px at 70% 60%,#fff,transparent),radial-gradient(2px 2px at 40% 80%,#9bd,transparent),radial-gradient(1px 1px at 85% 25%,#fff,transparent),radial-gradient(1px 1px at 55% 15%,#fff,transparent),linear-gradient(160deg,#0A0E1A,#1A1040);}
+  .cine{max-width:600px;animation:fadeUp .8s ease;}
+  .cine .badge{font-size:13px;letter-spacing:4px;color:#FFD166;font-weight:800;margin-bottom:18px;}
+  .cine h1{font-size:30px;margin:0 0 16px;line-height:1.25;background:linear-gradient(90deg,#FFD166,#FF7A18);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+  .cine p{font-size:16px;color:#C9D4F0;line-height:1.6;margin:0 0 28px;}
+  .cine .blink{animation:blink 1.4s infinite;}
+  @keyframes blink{50%{opacity:.3;}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+  .btn-cine{background:linear-gradient(90deg,#FF7A18,#FFD166);color:#1A0F00;border-radius:30px;padding:15px 40px;font-weight:800;font-size:16px;box-shadow:0 8px 30px rgba(255,122,24,.4);}
+  .btn-cine:active{transform:scale(.97);}
+
+  .wiz-title{font-size:22px;font-weight:800;margin:0 0 6px;}
+  .wiz-sub{color:#9FB0D8;font-size:14px;margin:0 0 22px;}
+  .class-grid{display:flex;flex-direction:column;gap:14px;width:100%;max-width:440px;}
+  .class-card{border:2px solid rgba(255,255,255,.12);border-radius:20px;padding:18px;text-align:left;display:flex;gap:14px;align-items:center;cursor:pointer;transition:.18s;position:relative;overflow:hidden;}
+  .class-card:active{transform:scale(.98);}
+  .class-card .cc-ico{font-size:42px;flex-shrink:0;width:64px;height:64px;border-radius:16px;display:flex;align-items:center;justify-content:center;}
+  .class-card .cc-name{font-weight:800;font-size:17px;}
+  .class-card .cc-class{font-size:12px;font-weight:700;opacity:.7;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;}
+  .class-card .cc-desc{font-size:12px;color:#B9C4E4;margin-top:4px;line-height:1.4;}
+  .class-card .cc-arrow{margin-left:auto;font-size:22px;opacity:.6;}
+
+  .bot-stage{max-width:460px;width:100%;animation:fadeUp .5s ease;}
+  .bot-avatar{font-size:72px;margin-bottom:6px;animation:bob 2.4s ease-in-out infinite;}
+  @keyframes bob{50%{transform:translateY(-10px);}}
+  .bot-name{font-weight:800;font-size:15px;letter-spacing:1px;margin-bottom:14px;}
+  .bot-bubble{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:18px;padding:18px 20px;font-size:15px;line-height:1.6;color:#EAF0FF;min-height:90px;text-align:left;}
+  .bot-dots{display:flex;justify-content:center;gap:8px;margin:18px 0;}
+  .bot-dot{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.25);}
+  .bot-dot.on{background:#FFD166;width:22px;border-radius:5px;}
+  .wiz-nav{display:flex;gap:12px;justify-content:center;}
+  .theme-switch{font-size:12px;color:var(--muted);background:#F0ECFA;border-radius:20px;padding:6px 12px;font-weight:600;}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="loginView">
+  <div class="login-hero">
+    <div class="logo">🎮</div>
+    <h1 id="brandTitle">Görev Portalı</h1>
+    <p>Görevleri tamamla, hediyeye yaklaş!</p>
+  </div>
+  <div class="wrap" style="padding-top:0;">
+    <div class="card">
+      <div class="role-grid">
+        <button class="role-btn active" data-role="child"><span class="ico">🧒</span>Çocuk</button>
+        <button class="role-btn" data-role="approver"><span class="ico">👨‍👩‍👧</span>Onaylayıcı</button>
+        <button class="role-btn" data-role="admin"><span class="ico">⭐</span>Yönetici</button>
+      </div>
+      <div class="name-list" id="nameList"></div>
+      <div class="pin-box hidden" id="pinBox">
+        <div class="sub" style="text-align:center" id="pinFor"></div>
+        <div class="pin-dots" id="pinDots"></div>
+        <div class="pin-err" id="pinErr"></div>
+        <div class="keypad" id="keypad"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="appView" class="hidden">
+  <div class="topbar">
+    <div class="brand">🎮 <span id="brandTop">Görev Portalı</span></div>
+    <div class="who">
+      <span id="whoLabel"></span>
+      <button class="btn-logout" onclick="logout()">Çıkış</button>
+    </div>
+  </div>
+  <div class="wrap" id="appBody"></div>
+</div>
+
+<div id="wizardMount"></div>
+<div id="modalMount"></div>
+<div id="toastMount"></div>
+
+<script>
+/* =========================================================
+   GÖREV PORTALI - Faz 1 prototip (localStorage)
+   ========================================================= */
+
+const APP_NAME = "Görev Portalı";          // isim netlesince burayi degistir
+const SEASON_END = "2026-06-26";           // karne gunu
+const GOAL_XP = 2500;                       // siluet acilma hedefi (her cocuk)
+const STORE_KEY = "gp_state_v2";
+
+/* ---- Görev kataloğu ----
+   sub: cocuk+ebeveyn icin net aciklama (oyunsal baslik + duz alt satir)
+   variants: yasa gore icerik (AI gorevinde prompt'a da gider)         */
+const TASKS = [
+  // ===== HAFTALIK ANA GÖREVLER =====
+  {id:"ogren", emoji:"🧠", title:"Bilgi Kaşifi", sub:"Yeni bir şey öğren, kendi cümlelerinle anlat",
+   type:"weekly", xp:100, target:1, win:[0,24], proof:"text", cat:"Öğrenme", ai:true,
+   variants:{
+     "8":{hint:"Günün hayvanı: bir hayvan seç, en ilginç özelliğini yaz",
+          ph:"Örn: Ahtapotların üç kalbi var ve mavi kanları olduğunu öğrendim..."},
+     "13":{hint:"Bir konu araştır, kendi cümlelerinle detaylı anlat",
+           ph:"Örn: Yapay zeka nasıl çalışır / uzay mekiği nasıl yörüngeye oturur..."}
+   }},
+  {id:"ekransiz", emoji:"📵", title:"Ekransız Mola", sub:"1 saat ekransız: kitap, lego ya da maket",
+   type:"weekly", xp:60, target:2, win:[0,24], proof:"photo", cat:"Öğrenme"},
+  {id:"fiziksel", emoji:"🏆", title:"Kahraman Antrenmanı", sub:"Hareket et, formda kal",
+   type:"weekly", xp:40, target:3, win:[0,24], proof:"photo", cat:"Sağlık",
+   variants:{
+     "8":{hint:"Parkta 20 dk oyun ya da 20 kez zıplama"},
+     "13":{hint:"20 şınav ya da 20 dk yürüyüş / hareket"}
+   }},
+
+  // ===== GÜNLÜK SAATLİ GÖREVLER =====
+  {id:"yatak", emoji:"🛏️", title:"Yatak Ustası", sub:"Yatağını düzgün topla", type:"daily", xp:15, target:1, win:[7,11], proof:"photo", cat:"Ev"},
+  {id:"dis_sabah", emoji:"🦷", title:"Sağlık Kalkanı · sabah", sub:"Dişlerini fırçala", type:"daily", xp:10, target:1, win:[6,12], proof:"none", cat:"Bakım"},
+  {id:"dis_aksam", emoji:"🦷", title:"Sağlık Kalkanı · akşam", sub:"Dişlerini fırçala", type:"daily", xp:10, target:1, win:[18,24], proof:"none", cat:"Bakım"},
+  {id:"el", emoji:"🧼", title:"Mikrop Avcısı", sub:"Ellerini yıka", type:"daily", xp:5, target:3, win:[0,24], proof:"none", cat:"Bakım"},
+  {id:"su", emoji:"💧", title:"Su Büyüsü", sub:"Büyük bir bardak su iç", type:"daily", xp:5, target:3, win:[0,24], proof:"none", cat:"Sağlık"},
+  {id:"kahvalti", emoji:"🥣", title:"Kahvaltı", sub:"Güne sağlıklı başla", type:"daily", xp:10, target:1, win:[7,10], proof:"none", cat:"Sağlık"},
+  {id:"ogle", emoji:"🍽️", title:"Öğle Yemeği", sub:"Öğününü ye", type:"daily", xp:10, target:1, win:[12,15], proof:"none", cat:"Sağlık"},
+  {id:"aksam", emoji:"🍲", title:"Akşam Yemeği", sub:"Öğününü ye", type:"daily", xp:10, target:1, win:[18,21], proof:"none", cat:"Sağlık"},
+  {id:"sofra", emoji:"🍽️", title:"Mutfak Şövalyesi", sub:"Sofra kurmaya/toplamaya yardım et", type:"daily", xp:15, target:1, win:[18,21], proof:"none", cat:"Ev"},
+  {id:"kitap", emoji:"📚", title:"Kitap Kurdu", sub:"20 dakika kitap oku, ne okuduğunu yaz", type:"daily", xp:15, target:1, win:[0,24], proof:"text", cat:"Öğrenme"},
+];
+/* yasa gore varyant cek */
+function tv(task, age){ return (task.variants && task.variants[String(age)]) || null; }
+
+/* =========================================================
+   RPG TEMA MOTORU
+   Her tema: renk paleti + hikaye + kilavuz bot + gorev dili
+   + siluet milestone metinleri. Cocuk secince tum arayuz burunur.
+   ========================================================= */
+const THEMES = {
+  scifi:{
+    id:"scifi", name:"Galaktik Kaşif", cls:"Kaptan", ico:"🚀",
+    colors:{"primary":"#00E5FF","primary-dark":"#0077AA","accent":"#FF3DCB","bg":"#080C18","card":"#111A2E","text":"#E8F2FF","muted":"#7C8FB8","line":"#1E2A44"},
+    cardGrad:"linear-gradient(135deg,#0A1530,#00415C)",
+    bot:{name:"NOVA", ico:"🛸"},
+    intro:"Galaksinin en güçlü gizli gemisi bir hangarda saklı. Onu çekip kaderini ele almak senin görevin, Kaptan.",
+    story:"Uzay gemisinin kaptanısın. Karatahtadaki siluet, galaksinin en güçlü gizli gemisi. Onu hangara çekmek için kalkanları ve enerjiyi stabil tut.",
+    prize:"Gizli Gemi", revealLabel:"HANGAR AÇILDI! Gemi senin Kaptan 🚀",
+    approval:"Üst Komutanlık onayı bekleniyor",
+    miles:{0:"Sinyaller zayıf...",25:"Sensörler bir sinyal yakaladı 📡",50:"Gemi sensörleri hedefi algıladı!",75:"Hangar kapıları açılıyor...",100:"HANGAR AÇILDI 🚀"},
+    tut:[
+      "Merhaba Kaptan! Ben NOVA, geminin yapay zekasıyım. Büyük Karne Sezonu başladı ve gizli gemiyi hangara çekme görevi sana düştü.",
+      "Her gün küçük seferler (görevler) yapacaksın: kalkanları şarj et, reaktöre yakıt doldur. Her sefer kanıtını gönderirsin, Üst Komutanlık (ailen) onaylar ve gemiye enerji dolar.",
+      "Seferlerin yıldız saatleri var, zamanı gelince açılır. Haftada bir de büyük Keşif Raporu yazarsın. Enerji doldukça siluet netleşir. Hazır mısın Kaptan?"
+    ],
+    tasks:{
+      ogren:{title:"Keşif Raporu", sub:"Galaktik veritabanına yeni veri girişi yap"},
+      ekransiz:{title:"Sinyal Sessizliği", sub:"1 saat ekranları kapat, analog moda geç"},
+      fiziksel:{title:"Mürettebat Antrenmanı", sub:"Bedenini sıfır yerçekimine hazırla"},
+      yatak:{title:"Yer Çekimi Kalkanları", sub:"Mürettebat odasını düzenle, kalkanları aktif et"},
+      dis_sabah:{title:"Sonik Kalkan · şafak", sub:"Diş koruma kalkanını şarj et"},
+      dis_aksam:{title:"Sonik Kalkan · gece", sub:"Diş koruma kalkanını şarj et"},
+      el:{title:"Dekontaminasyon", sub:"Ellerini sterilize et"},
+      su:{title:"Soğutma Sıvısı", sub:"Enerji hücresine sıvı yükle (su iç)"},
+      kahvalti:{title:"Sabah Yakıtı", sub:"Reaktöre yakıt doldur"},
+      ogle:{title:"Öğlen Yakıtı", sub:"Reaktöre yakıt doldur"},
+      aksam:{title:"Gece Yakıtı", sub:"Reaktöre yakıt doldur"},
+      sofra:{title:"Köprü Görevlisi", sub:"Yemek köprüsünü hazırla ve topla"},
+      kitap:{title:"Veri Akışı", sub:"20 dk bilgi modülü oku"},
+    }
+  },
+  fantasy:{
+    id:"fantasy", name:"Fantastik Diyarlar", cls:"Şövalye", ico:"⚔️",
+    colors:{"primary":"#D4A017","primary-dark":"#7A5C12","accent":"#2E7D32","bg":"#1A1410","card":"#2A2018","text":"#F3E9D2","muted":"#A8957A","line":"#3D2F22"},
+    cardGrad:"linear-gradient(135deg,#3A2A14,#1F3A1E)",
+    bot:{name:"Eldric", ico:"🧙"},
+    intro:"Krallığın kayıp kutsal eseri bir mührün ardında saklı. Onu bulmak için niteliklerini her gün bileyen bir kahraman olmalısın.",
+    story:"Krallığın kayıp kutsal eserini arayan bir şövalyesin. Siluet, parşömendeki gizemli mühür. Canavarlarla savaşmak için her gün statlarını geliştir.",
+    prize:"Kutsal Eser", revealLabel:"MÜHÜR KIRILDI! Eser senin 🗝️",
+    approval:"Kale onayı bekleniyor",
+    miles:{0:"Mühür sessiz...",25:"Mühür hafifçe parladı ✨",50:"Mühür çatlamaya başladı!",75:"Kadim güç uyanıyor...",100:"MÜHÜR KIRILDI 🗝️"},
+    tut:[
+      "Selam genç şövalye! Ben Eldric, diyarın bilge büyücüsü. Büyük Karne Sezonu açıldı ve kutsal eseri bulma kaderi sana bağlandı.",
+      "Her gün niteliklerini geliştiren görevler yaparsın: zırhını parlat, hayat iksiri iç. Kanıtını sunarsın, Kale (ailen) onaylar ve mührün gücü artar.",
+      "Görevlerin belli saatlerde açılır. Haftada bir kütüphanede kadim parşömen araştırırsın. Güç doldukça mühür çatlar. Yola çıkmaya hazır mısın?"
+    ],
+    tasks:{
+      ogren:{title:"Kadim Parşömen", sub:"Kütüphanede araştır, büyü kitabına yaz"},
+      ekransiz:{title:"Meditasyon", sub:"1 saat büyülü aletsiz: kitap, maket"},
+      fiziksel:{title:"Nitelik Eğitimi", sub:"Güç ve dayanıklılık statlarını yükselt"},
+      yatak:{title:"Sığınak Düzeni", sub:"Kampını topla, ateşini düzenle"},
+      dis_sabah:{title:"Beyaz Zırh · şafak", sub:"Zırhını parlat"},
+      dis_aksam:{title:"Beyaz Zırh · gece", sub:"Zırhını parlat"},
+      el:{title:"Arınma Ayini", sub:"Ellerini kutsal suyla yıka"},
+      su:{title:"Hayat İksiri", sub:"İksirini iç (su)"},
+      kahvalti:{title:"Şafak Ziyafeti", sub:"Gücünü topla"},
+      ogle:{title:"Öğlen Ziyafeti", sub:"Gücünü topla"},
+      aksam:{title:"Akşam Ziyafeti", sub:"Gücünü topla"},
+      sofra:{title:"Şölen Hazırlığı", sub:"Sofrayı kur ve topla"},
+      kitap:{title:"Büyü Kitabı", sub:"20 dk kadim metin oku"},
+    }
+  },
+  pixel:{
+    id:"pixel", name:"Piksel Evreni", cls:"Piksel Ustası", ico:"🧱",
+    colors:{"primary":"#5AC54F","primary-dark":"#2E7D32","accent":"#8B5A2B","bg":"#101418","card":"#1B2228","text":"#E9F0E6","muted":"#8AA088","line":"#2A3540"},
+    cardGrad:"linear-gradient(135deg,#1F3A1E,#3A2A14)",
+    bot:{name:"Bit", ico:"🤖"},
+    intro:"Dünyanın en nadir materyali henüz birleştirilmemiş bloklar halinde. Onu craft etmek için her gün kaynak toplayan bir mimar ol.",
+    story:"Dünyanın en nadir materyalini craft etmeye çalışan bir mimarsın. Siluet, henüz birleştirilmemiş blok yığını. Her gün kaynak topla, yapıyı tamamla.",
+    prize:"Nadir Materyal", revealLabel:"CRAFT TAMAMLANDI! Senin 🟩",
+    approval:"Sunucu onayı bekleniyor",
+    miles:{0:"Bloklar dağınık...",25:"Bloklar belirmeye başladı ⛏️",50:"Yapı %50 craft edildi!",75:"Son bloklar yerleşiyor...",100:"CRAFT TAMAMLANDI 🟩"},
+    tut:[
+      "Hey usta! Ben Bit, senin craft yardımcın. Büyük Karne Sezonu başladı, en nadir materyali craft etme görevi sende!",
+      "Her gün kaynak toplama görevleri yaparsın: HP yenile, açlık barını doldur. Kanıtını atarsın, Sunucu (ailen) onaylar ve yapın blok blok yükselir.",
+      "Görevler belli saatlerde spawn olur. Haftada bir araştırma tezgahında yeni tarif keşfedersin. Kaynak doldukça yapı tamamlanır. Craft'a başlayalım mı?"
+    ],
+    tasks:{
+      ogren:{title:"Araştırma Tezgahı", sub:"Yeni tarif keşfet, kütüğe yaz"},
+      ekransiz:{title:"Offline Mod", sub:"1 saat ekransız craft: lego, maket"},
+      fiziksel:{title:"Stamina Yenileme", sub:"Karakter staminanı doldur"},
+      yatak:{title:"Spawn Noktası", sub:"Spawn'ı düzenle, güvenli bölge yarat"},
+      dis_sabah:{title:"HP Yenile · sabah", sub:"Karakter HP'sini yenile"},
+      dis_aksam:{title:"HP Yenile · gece", sub:"Karakter HP'sini yenile"},
+      el:{title:"Debuff Temizle", sub:"Ellerini yıka, kötü etkiyi sil"},
+      su:{title:"Su Kovası", sub:"Su kovasını kullan (su iç)"},
+      kahvalti:{title:"Açlık Barı · sabah", sub:"Açlık barını doldur"},
+      ogle:{title:"Açlık Barı · öğlen", sub:"Açlık barını doldur"},
+      aksam:{title:"Açlık Barı · akşam", sub:"Açlık barını doldur"},
+      sofra:{title:"Crafting Masası", sub:"Yemek masasını kur ve topla"},
+      kitap:{title:"Büyü Masası", sub:"Büyü masası seviyeni artır (kitap oku)"},
+    }
+  }
+};
+const DEFAULT_COLORS={"primary":"#6C2BD9","primary-dark":"#4A148C","accent":"#FF7A18","bg":"#F4F1FB","card":"#FFFFFF","text":"#1F1235","muted":"#7A6F94","line":"#E7E0F5"};
+
+function themeOf(u){ return (u && u.theme && THEMES[u.theme]) ? THEMES[u.theme] : null; }
+function applyTheme(th){ const c=th?th.colors:DEFAULT_COLORS; for(const k in c) document.documentElement.style.setProperty('--'+k,c[k]); }
+function resetTheme(){ applyTheme(null); }
+/* gorev ismini aktif temaya cevir (yoksa notr katalog) */
+function themed(task){
+  const th=themeOf(session);
+  if(th && th.tasks[task.id]) return {title:th.tasks[task.id].title, sub:th.tasks[task.id].sub};
+  return {title:task.title, sub:task.sub};
+}
+function milestoneText(th,pct){
+  if(!th) return "";
+  const keys=[0,25,50,75,100]; let m=th.miles[0];
+  for(const k of keys){ if(pct>=k) m=th.miles[k]; }
+  return m;
+}
+
+/* ---- Kullanıcılar ---- */
+const SEED = {
+  season:{name:"Karne Sezonu", end:SEASON_END, prize:"switch", goal:GOAL_XP},
+  users:[
+    // cocuklar (DEMO isimleri - gercek aile verisi backend'de tutulur, repo'da degil)
+    {id:"c1", role:"child", name:"Demir", age:13, pin:"1111", av:"🦁", parents:["p1","p2","p3"]},
+    {id:"c2", role:"child", name:"Kuzey", age:8, pin:"2222", av:"🐯", parents:["p1","p2","p3"]},
+    {id:"c3", role:"child", name:"Toprak", age:13, pin:"3333", av:"🦊", parents:["p4","p5"]},
+    // onaylayicilar
+    {id:"p1", role:"approver", name:"Elif", title:"Anne", pin:"1234", av:"👩", kids:["c1","c2"]},
+    {id:"p2", role:"approver", name:"Mert", title:"Baba", pin:"1234", av:"👨", kids:["c1","c2"]},
+    {id:"p3", role:"approver", name:"Selin", title:"Teyze", pin:"1234", av:"👩‍🦰", kids:["c1","c2"]},
+    {id:"p4", role:"approver", name:"Derya", title:"Anne", pin:"1234", av:"👩", kids:["c3"]},
+    {id:"p5", role:"approver", name:"Can", title:"Baba", pin:"1234", av:"👨", kids:["c3"]},
+    // admin
+    {id:"admin", role:"admin", name:"Yönetici", title:"Dayı", pin:"0000", av:"⭐", kids:["c1","c2","c3"]},
+  ],
+  completions:[],   // {id,userId,taskId,date,ts,status,proof,aiNote,approverId}
+};
+
+/* ---- Prize gizli isim (siluet açılınca görünür) ---- */
+const PRIZE_LABEL = {switch:"Nintendo Switch Lite 🎉"};
+
+/* ======================= STATE ======================= */
+let state = load();
+let session = null;       // current user object
+let pinDraft = "";
+let pinTarget = null;     // user being authenticated
+let loginRole = "child";
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  const fresh = JSON.parse(JSON.stringify(SEED));
+  localStorage.setItem(STORE_KEY, JSON.stringify(fresh));
+  return fresh;
+}
+function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+function user(id){ return state.users.find(u=>u.id===id); }
+
+/* ======================= HELPERS ======================= */
+function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function nowHour(){ return new Date().getHours() + new Date().getMinutes()/60; }
+function weekKey(){ // ISO-ish week bucket
+  const d=new Date(); const onejan=new Date(d.getFullYear(),0,1);
+  const wk=Math.ceil((((d-onejan)/86400000)+onejan.getDay()+1)/7);
+  return d.getFullYear()+"-W"+wk;
+}
+function inWindow(task){ const h=nowHour(); return h>=task.win[0] && h<task.win[1]; }
+function winLabel(task){
+  if(task.win[0]===0 && task.win[1]===24) return "Gün boyu";
+  const f=n=>String(n).padStart(2,"0")+":00";
+  return f(task.win[0])+"-"+f(task.win[1]);
+}
+
+/* completions for a child today / this week */
+function compsFor(userId, taskId, period){
+  return state.completions.filter(c=>{
+    if(c.userId!==userId || c.taskId!==taskId) return false;
+    if(period==="day") return c.date===todayStr();
+    if(period==="week") return c.week===weekKey();
+    return true;
+  });
+}
+function doneCount(userId, task){
+  const period = task.type==="weekly" ? "week" : "day";
+  return compsFor(userId, task.id, period).filter(c=>c.status!=="rejected").length;
+}
+function approvedCount(userId, task){
+  const period = task.type==="weekly" ? "week" : "day";
+  return compsFor(userId, task.id, period).filter(c=>c.status==="approved").length;
+}
+function userXP(userId){
+  return state.completions
+    .filter(c=>c.userId===userId && c.status==="approved")
+    .reduce((s,c)=>{ const t=TASKS.find(x=>x.id===c.taskId); return s+(t?t.xp:0); },0);
+}
+function pendingForApprover(appr){
+  return state.completions
+    .filter(c=>c.status==="pending" && appr.kids.includes(c.userId))
+    .sort((a,b)=>b.ts-a.ts);
+}
+
+/* ======================= LOGIN UI ======================= */
+function renderLogin(){
+  document.getElementById("brandTitle").textContent = APP_NAME;
+  document.querySelectorAll(".role-btn").forEach(b=>{
+    b.classList.toggle("active", b.dataset.role===loginRole);
+    b.onclick = ()=>{ loginRole=b.dataset.role; pinTarget=null; renderLogin(); };
+  });
+  const list = document.getElementById("nameList");
+  const people = state.users.filter(u=>u.role===loginRole);
+  list.innerHTML = people.map(u=>`
+    <div class="name-item ${pinTarget&&pinTarget.id===u.id?'active':''}" onclick="pickUser('${u.id}')">
+      <div class="av">${u.av}</div>
+      <div>${u.name}<small>${u.role==='child'?u.age+' yaş':(u.title||'')}</small></div>
+    </div>`).join("");
+  document.getElementById("pinBox").classList.toggle("hidden", !pinTarget);
+  if(pinTarget){
+    document.getElementById("pinFor").textContent = pinTarget.name + " - PIN gir";
+    renderPin();
+    renderKeypad();
+  }
+}
+function pickUser(id){ pinTarget=user(id); pinDraft=""; document.getElementById("pinErr").textContent=""; renderLogin(); }
+function renderPin(){
+  const dots = document.getElementById("pinDots");
+  dots.innerHTML = [0,1,2,3].map(i=>`<div class="pin-dot ${i<pinDraft.length?'filled':''}"></div>`).join("");
+}
+function renderKeypad(){
+  const kp = document.getElementById("keypad");
+  const keys = ["1","2","3","4","5","6","7","8","9","sil","0","ok"];
+  kp.innerHTML = keys.map(k=>{
+    if(k==="sil") return `<button class="key wide" onclick="pinKey('sil')">⌫</button>`;
+    if(k==="ok")  return `<button class="key wide" onclick="pinKey('ok')">Giriş</button>`;
+    return `<button class="key" onclick="pinKey('${k}')">${k}</button>`;
+  }).join("");
+}
+function pinKey(k){
+  const err=document.getElementById("pinErr"); err.textContent="";
+  if(k==="sil"){ pinDraft=pinDraft.slice(0,-1); renderPin(); return; }
+  if(k==="ok"){ tryLogin(); return; }
+  if(pinDraft.length<4){ pinDraft+=k; renderPin(); if(pinDraft.length===4) setTimeout(tryLogin,150); }
+}
+function tryLogin(){
+  if(!pinTarget) return;
+  if(pinDraft===pinTarget.pin){ session=pinTarget; pinDraft=""; enterApp(); }
+  else{ document.getElementById("pinErr").textContent="Yanlış PIN, tekrar dene"; pinDraft=""; renderPin(); }
+}
+
+/* ======================= APP SHELL ======================= */
+function enterApp(){
+  document.getElementById("loginView").classList.add("hidden");
+  // cocuk + tema yoksa once RPG sihirbazi
+  if(session.role==="child" && !session.theme){ startWizard(); return; }
+  document.getElementById("appView").classList.remove("hidden");
+  document.getElementById("brandTop").textContent = APP_NAME;
+  document.getElementById("whoLabel").innerHTML = `${session.av} <b>${session.name}</b>`;
+  if(session.role==="child") applyTheme(themeOf(session)); else resetTheme();
+  renderApp();
+}
+function logout(){ resetTheme(); session=null; pinTarget=null; pinDraft=""; document.getElementById("wizardMount").innerHTML=""; document.getElementById("appView").classList.add("hidden"); document.getElementById("loginView").classList.remove("hidden"); renderLogin(); }
+
+/* ======================= RPG ONBOARDING WIZARD ======================= */
+let wizPickedTheme=null, wizStep=0;
+function startWizard(){ wizPickedTheme=null; wizStep=0; wizIntro(); }
+function wizMount(html, starfield){
+  document.getElementById("wizardMount").innerHTML =
+    `<div class="wizard ${starfield?'starfield':''}">${html}</div>`;
+}
+function wizIntro(){
+  wizMount(`
+    <div class="cine">
+      <div class="badge">BÜYÜK KARNE SEZONU</div>
+      <h1>Hedefe giden yolda<br>kaderini seç...</h1>
+      <p>Karatahtada gizemli bir siluet beliriyor. Onu açığa çıkarmak senin elinde, ${session.name}. Görevleri tamamla, gücünü topla, ödülü hak et.</p>
+      <button class="btn-cine" onclick="wizClasses()">Maceraya Başla <span class="blink">▸</span></button>
+    </div>`, true);
+}
+function wizClasses(){
+  const cards = Object.values(THEMES).map(t=>`
+    <div class="class-card" style="background:${t.cardGrad}" onclick="wizPick('${t.id}')">
+      <div class="cc-ico" style="background:rgba(0,0,0,.25)">${t.ico}</div>
+      <div>
+        <div class="cc-class">${t.cls}</div>
+        <div class="cc-name">${t.name}</div>
+        <div class="cc-desc">${t.intro}</div>
+      </div>
+      <div class="cc-arrow">▸</div>
+    </div>`).join("");
+  wizMount(`
+    <h2 class="wiz-title">Sınıfını Seç</h2>
+    <p class="wiz-sub">Her dünyanın kendi dili, renkleri ve kılavuzu var. Birini seç, panelin ona bürünsün.</p>
+    <div class="class-grid">${cards}</div>`, true);
+}
+function wizPick(themeId){ wizPickedTheme=themeId; wizStep=0; wizTutorial(); }
+function wizTutorial(){
+  const th=THEMES[wizPickedTheme];
+  const steps=th.tut; const last=wizStep>=steps.length-1;
+  applyTheme(th); // tutorial sirasinda tema renkleri canli onizleme
+  const dots=steps.map((_,i)=>`<div class="bot-dot ${i===wizStep?'on':''}"></div>`).join("");
+  wizMount(`
+    <div class="bot-stage">
+      <div class="bot-avatar">${th.bot.ico}</div>
+      <div class="bot-name" style="color:${th.colors.primary}">${th.bot.name} · ${th.cls} Kılavuzu</div>
+      <div class="bot-bubble">${steps[wizStep]}</div>
+      <div class="bot-dots">${dots}</div>
+      <div class="wiz-nav">
+        ${wizStep>0?`<button class="btn-ghost" onclick="wizBack()">Geri</button>`:`<button class="btn-ghost" onclick="wizClasses()">Sınıf değiştir</button>`}
+        <button class="btn-cine" onclick="${last?'wizFinish()':'wizNext()'}">${last?'Maceraya Başla ⚔️':'İleri ▸'}</button>
+      </div>
+    </div>`, false);
+  document.querySelector(".wizard").style.background=th.colors.bg;
+}
+function wizNext(){ wizStep++; wizTutorial(); }
+function wizBack(){ wizStep--; wizTutorial(); }
+function wizFinish(){
+  session.theme=wizPickedTheme;
+  const u=user(session.id); if(u) u.theme=wizPickedTheme;  // kalici kaydet
+  save();
+  document.getElementById("wizardMount").innerHTML="";
+  enterApp();
+}
+/* cocuk sonradan tema degistirir */
+function changeTheme(){ document.getElementById("appView").classList.add("hidden"); wizStep=0; wizClasses(); }
+function renderApp(){
+  if(session.role==="child") renderChild();
+  else if(session.role==="approver") renderApprover();
+  else renderAdmin();
+}
+
+/* ======================= CHILD VIEW ======================= */
+let childTab = "today";
+function renderChild(){
+  const xp = userXP(session.id);
+  const pct = Math.min(100, Math.round(xp/state.season.goal*100));
+  const revealed = pct>=100;
+  const body = document.getElementById("appBody");
+  const th = themeOf(session);
+
+  // silhouette reveal: brightness 0 -> 1, blur 12 -> 0
+  const bright = (pct/100).toFixed(2);
+  const blur = (12*(1-pct/100)).toFixed(1);
+  const showQ = pct<35;
+  const heroGrad = th ? th.cardGrad : "linear-gradient(160deg,#3A1D6E,#6C2BD9)";
+  const prizeName = th ? th.prize : "Hediye Sandığı";
+  const revealLabel = th ? th.revealLabel : PRIZE_LABEL[state.season.prize];
+
+  body.innerHTML = `
+    <div class="card hero-card" style="background:${heroGrad}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div><h2>${prizeName}</h2>
+        <div class="sub">${th?th.story.split('.')[0]+'.':'Görev yaptıkça netleşiyor...'}</div></div>
+        ${th?`<button class="theme-switch" style="background:rgba(255,255,255,.18);color:#fff" onclick="changeTheme()">${th.ico} ${th.cls}</button>`:''}
+      </div>
+      <div class="silo-stage">
+        <div class="silo-glow" style="opacity:${(pct/100*0.9+0.1).toFixed(2)}"></div>
+        <div class="silo-q" style="opacity:${showQ?1:0}">?</div>
+        ${switchSVG(bright,blur,revealed)}
+      </div>
+      <div class="reveal-label">${revealed?revealLabel:milestoneText(th,pct)}</div>
+      <div class="xpbar-wrap">
+        <div class="xpbar-top"><span>${xp} ⚡</span><span>Hedef ${state.season.goal}</span></div>
+        <div class="xpbar"><div class="xpbar-fill" style="width:${pct}%"></div></div>
+        <div class="pct-big">%${pct} tamamlandı · Karne günü 26 Haziran</div>
+      </div>
+    </div>
+
+    <div class="seg">
+      <button class="${childTab==='today'?'active':''}" onclick="setChildTab('today')">Bugün</button>
+      <button class="${childTab==='week'?'active':''}" onclick="setChildTab('week')">Haftalık</button>
+      <button class="${childTab==='board'?'active':''}" onclick="setChildTab('board')">Sıralama</button>
+    </div>
+    <div id="childContent"></div>
+  `;
+  renderChildContent();
+}
+function setChildTab(t){ childTab=t; renderChildContent(); }
+function renderChildContent(){
+  const c = document.getElementById("childContent");
+  if(childTab==="board"){ c.innerHTML = leaderboardHTML(); return; }
+  const list = TASKS.filter(t=> childTab==="week" ? t.type==="weekly" : t.type==="daily");
+  if(childTab==="today"){
+    c.innerHTML = `<div class="card"><h2>Bugünün görevleri</h2><div class="sub">Zamanı gelen görevleri yap, kanıtını gönder.</div>${list.map(taskRow).join("")}</div>`;
+  }else{
+    c.innerHTML = `<div class="card"><h2>Haftalık ana görev</h2><div class="sub">Haftada bir, en değerli görev. Akıllı yardımcı değerlendirir.</div>${list.map(taskRow).join("")}</div>`;
+  }
+}
+function taskRow(task){
+  const done = doneCount(session.id, task);
+  const full = done>=task.target;
+  const pendingN = compsFor(session.id, task.id, task.type==="weekly"?"week":"day").filter(c=>c.status==="pending").length;
+  const active = inWindow(task);
+  const locked = !active && !full;
+  let cls="task", actionHTML="";
+  let stateChip="";
+  if(full){
+    cls+=" complete";
+    stateChip = pendingN>0
+      ? `<span class="chip pending">⏳ ${pendingN} onayda</span>`
+      : `<span class="chip done">✓ Tamam</span>`;
+    actionHTML = `<span style="font-size:24px">✅</span>`;
+  }else if(locked){
+    cls+=" locked";
+    actionHTML = `<button class="btn-do" disabled>Saati değil</button>`;
+  }else{
+    if(pendingN>0) { cls+=" waiting"; stateChip=`<span class="chip pending">⏳ ${pendingN} onayda</span>`; }
+    actionHTML = `<button class="btn-do" onclick="openDo('${task.id}')">Yaptım</button>`;
+  }
+  const countChip = task.target>1 ? `<span class="chip count">${done}/${task.target}</span>` : "";
+  const tt = themed(task);
+  const variant = tv(task, session.age);
+  const subText = tt.sub || (task.sub||"");
+  const hintLine = (variant && variant.hint) ? `<div style="font-size:11px;color:var(--accent);margin-top:2px;font-weight:600">▸ ${variant.hint}</div>` : "";
+  return `
+    <div class="${cls}">
+      <div class="t-ico">${task.emoji}</div>
+      <div class="t-body">
+        <div class="t-title">${tt.title}</div>
+        ${subText?`<div style="font-size:12px;color:var(--muted);margin-top:1px">${subText}</div>`:""}
+        ${hintLine}
+        <div class="t-meta">
+          <span class="chip xp">+${task.xp} XP</span>
+          <span class="chip win">🕐 ${winLabel(task)}</span>
+          ${countChip}${stateChip}
+        </div>
+      </div>
+      <div class="t-action">${actionHTML}</div>
+    </div>`;
+}
+function leaderboardHTML(){
+  const kids = state.users.filter(u=>u.role==="child")
+    .map(u=>({u, xp:userXP(u.id)}))
+    .sort((a,b)=>b.xp-a.xp);
+  const max = Math.max(state.season.goal, ...kids.map(k=>k.xp), 1);
+  return `<div class="card"><h2>Sıralama 🏆</h2><div class="sub">Dostça yarış. Herkes kendi hediyesini açıyor.</div>
+    ${kids.map((k,i)=>`
+      <div class="lb-row">
+        <div class="lb-rank ${i===0?'gold':''}">${i===0?'🥇':(i+1)}</div>
+        <div class="lb-av">${k.u.av}</div>
+        <div class="lb-body">
+          <b>${k.u.name}</b>${k.u.id===session.id?' <span style="color:var(--primary);font-size:12px">(sen)</span>':''}
+          <div class="lb-mini"><span style="width:${Math.min(100,k.xp/state.season.goal*100)}%"></span></div>
+        </div>
+        <div class="lb-xp">${k.xp}</div>
+      </div>`).join("")}
+  </div>`;
+}
+
+/* ---- "Yaptım" modal ---- */
+let pendingPhoto = null;
+function openDo(taskId){
+  const task = TASKS.find(t=>t.id===taskId);
+  pendingPhoto = null;
+  const variant = tv(task, session.age);
+  const ph = (variant && variant.ph) ? variant.ph : "Birkaç cümle yaz...";
+  const hintLine = (variant && variant.hint) ? `<div class="ai-note" style="margin-bottom:10px">💡 ${variant.hint}</div>` : "";
+  let inner = "";
+  if(task.proof==="text"){
+    inner = `${hintLine}<div class="field"><label>${task.id==='ogren'?'Ne öğrendin? Kendi cümlelerinle anlat:':'Ne okudun? Kısaca anlat:'}</label>
+      <textarea id="proofText" rows="5" placeholder="${ph}"></textarea></div>`;
+  }else if(task.proof==="photo"){
+    inner = `<div class="field"><label>Fotoğraf ekle (isteğe bağlı):</label>
+      <label class="photo-pick" id="photoLabel">
+        📷 Fotoğraf seç<br><small>Telefondan çek veya galeriden seç</small>
+        <input type="file" accept="image/*" capture="environment" style="display:none" onchange="pickPhoto(event)">
+      </label></div>
+      <div class="field"><label>Not (isteğe bağlı):</label><input type="text" id="proofText" placeholder="İstersen birşey yaz"></div>`;
+  }else{
+    inner = `<p style="color:var(--muted);font-size:14px;margin:0 0 10px">Görevi yaptıysan onaya gönder. ${user(session.parents?.[0])?.name||'Ailen'} onaylayacak.</p>`;
+  }
+  const tt = themed(task);
+  const th = themeOf(session);
+  showModal(`
+    <h3>${task.emoji} ${tt.title}</h3>
+    <div class="msub">+${task.xp} ⚡ · ${th?th.approval:'Onay'} sonrası eklenir</div>
+    ${inner}
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal()">Vazgeç</button>
+      <button class="btn-primary" onclick="submitDo('${task.id}')">Onaya Gönder</button>
+    </div>
+  `);
+}
+function pickPhoto(e){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      const cv=document.createElement("canvas");
+      const sc=Math.min(1,300/img.width);
+      cv.width=img.width*sc; cv.height=img.height*sc;
+      cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+      pendingPhoto=cv.toDataURL("image/jpeg",0.6);
+      document.getElementById("photoLabel").innerHTML=`<img src="${pendingPhoto}"><br><small>Değiştirmek için dokun</small><input type="file" accept="image/*" capture="environment" style="display:none" onchange="pickPhoto(event)">`;
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function submitDo(taskId){
+  const task=TASKS.find(t=>t.id===taskId);
+  const txtEl=document.getElementById("proofText");
+  const txt = txtEl?txtEl.value.trim():"";
+  if(task.proof==="text" && txt.length<3){ toast("Lütfen birkaç cümle yaz"); return; }
+  const proof = {type:task.proof, text:txt, photo:pendingPhoto};
+  let aiNote=null;
+  if(task.ai){
+    aiNote = fakeAIEval(txt, session.age);  // prototipte sahte; Faz 2'de Claude API (yas prompt'a gider)
+  }
+  const comp = {
+    id:"c"+Date.now()+Math.floor(Math.random()*999),
+    userId:session.id, taskId:task.id, date:todayStr(), week:weekKey(),
+    ts:Date.now(), status:"pending", proof, aiNote, approverId:null
+  };
+  state.completions.push(comp);
+  save();
+  closeModal();
+  toast(aiNote ? "Yardımcı okudu ✓ Onaya gönderildi" : "Onaya gönderildi! ⏳");
+  renderChild();
+}
+/* Prototip sahte AI - Faz 2'de Claude API ile degisecek.
+   Gercek prompt: "Bu metin {age} yasinda bir cocugun KENDI cumleleri mi?
+   Anlamli, ogrenilmis bir bilgi iceriyor mu? Kopyala-yapistir mi?" + tesvik edici yorum. */
+function fakeAIEval(txt, age){
+  const words = txt.split(/\s+/).filter(Boolean).length;
+  const min = age>=13 ? 15 : 8;   // 13 yastan daha fazla detay beklenir
+  if(words>=min) return {ok:true, score:5, note:"Güzel ve kendi cümleleriyle anlatmış. Gerçekten yeni bir şey öğrenmiş 👏"};
+  if(words>=Math.ceil(min/2)) return {ok:true, score:4, note:"Anlamlı görünüyor, biraz daha detay güzel olurdu."};
+  return {ok:false, score:2, note:"Çok kısa, öğrenilen şey net değil. Onaylarken bir kontrol edin."};
+}
+
+/* ======================= APPROVER VIEW ======================= */
+function renderApprover(){
+  const body=document.getElementById("appBody");
+  const pend = pendingForApprover(session);
+  body.innerHTML = `
+    <div class="card">
+      <h2>Onay Bekleyenler</h2>
+      <div class="sub">${session.title} olarak ${session.kids.map(k=>user(k).name).join(", ")} için onay veriyorsun.</div>
+      ${pend.length? pend.map(approveCard).join("") : `<div class="empty"><span class="e">🎉</span>Bekleyen onay yok. Hepsi temiz!</div>`}
+    </div>
+    <div class="card">
+      <h2>Çocukların durumu</h2>
+      ${session.kids.map(kidStatusRow).join("")}
+    </div>
+    <div class="card">
+      <h2>Ekstra görev ver</h2>
+      <div class="sub">Çocuğa özel küçük bir görev tanımla (prototipte yakında).</div>
+      <button class="btn-primary" style="width:100%" onclick="toast('Faz 2de aktif olacak')">+ Ekstra görev ekle</button>
+    </div>
+  `;
+}
+function approveCard(c){
+  const child=user(c.userId); const task=TASKS.find(t=>t.id===c.taskId);
+  let proofHTML="";
+  if(c.proof.text) proofHTML+=`<div class="proof-box">"${c.proof.text}"</div>`;
+  if(c.proof.photo) proofHTML+=`<div class="proof-box">📷 Fotoğraf:<img src="${c.proof.photo}"></div>`;
+  if(!c.proof.text && !c.proof.photo) proofHTML=`<div class="proof-box" style="color:var(--muted)">Kanıt yok, çocuk yaptığını bildirdi.</div>`;
+  let aiHTML="";
+  if(c.aiNote) aiHTML=`<div class="ai-note">🤖 Akıllı yardımcı: ${c.aiNote.note} ${c.aiNote.ok?'✓':'⚠️'}</div>`;
+  const when=new Date(c.ts).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"});
+  return `
+    <div class="approve-card">
+      <div class="approve-head">
+        <div class="av">${child.av}</div>
+        <div><b>${child.name}</b> · ${task.emoji} ${task.title}
+          <small>${when} · +${task.xp} XP</small></div>
+      </div>
+      ${proofHTML}${aiHTML}
+      <div class="approve-actions">
+        <button class="btn-no" onclick="decide('${c.id}','rejected')">✕ Reddet</button>
+        <button class="btn-ok" onclick="decide('${c.id}','approved')">✓ Onayla</button>
+      </div>
+    </div>`;
+}
+function kidStatusRow(kid){
+  const u=user(kid); const xp=userXP(kid); const pct=Math.min(100,Math.round(xp/state.season.goal*100));
+  return `<div class="lb-row">
+    <div class="lb-av">${u.av}</div>
+    <div class="lb-body"><b>${u.name}</b>
+      <div class="lb-mini"><span style="width:${pct}%"></span></div></div>
+    <div class="lb-xp">${xp}<br><small style="color:var(--muted);font-weight:500">%${pct}</small></div>
+  </div>`;
+}
+function decide(compId, status){
+  const c=state.completions.find(x=>x.id===compId);
+  if(!c) return;
+  c.status=status; c.approverId=session.id;
+  save();
+  toast(status==="approved"?"Onaylandı ✓ XP eklendi":"Reddedildi");
+  renderApprover();
+}
+
+/* ======================= ADMIN VIEW ======================= */
+function renderAdmin(){
+  const body=document.getElementById("appBody");
+  const totalComps=state.completions.length;
+  const approved=state.completions.filter(c=>c.status==="approved").length;
+  const pending=state.completions.filter(c=>c.status==="pending").length;
+  body.innerHTML = `
+    <div class="card">
+      <h2>Sezon: ${state.season.name}</h2>
+      <div class="kv"><span>Hediye</span><b>${PRIZE_LABEL[state.season.prize]}</b></div>
+      <div class="kv"><span>Bitiş</span><b>${state.season.end}</b></div>
+      <div class="kv"><span>Hedef XP (her çocuk)</span><b>${state.season.goal}</b></div>
+      <div class="kv"><span>Toplam görev kaydı</span><b>${totalComps}</b></div>
+      <div class="kv"><span>Onaylanan / Bekleyen</span><b>${approved} / ${pending}</b></div>
+    </div>
+    <div class="card">
+      <h2>Çocuklar</h2>
+      ${state.users.filter(u=>u.role==="child").map(kidStatusRow).join("")}
+    </div>
+    <div class="card">
+      <h2>Görev kataloğu (${TASKS.length})</h2>
+      <div class="sub">Faz 2'de düzenlenebilir olacak.</div>
+      ${TASKS.map(t=>`<div class="admin-task">
+        <span class="e">${t.emoji}</span>
+        <div class="g">${t.title}<small> ${t.type==='weekly'?'Haftalık':'Günlük'} · ${winLabel(t)} · ${t.cat}</small></div>
+        <span class="chip xp">+${t.xp}</span>
+      </div>`).join("")}
+    </div>
+    <div class="card">
+      <h2>Yönetim</h2>
+      <button class="btn-no" style="width:100%;margin-bottom:10px" onclick="resetData()">🗑️ Tüm görev kayıtlarını sıfırla</button>
+      <button class="btn-primary" style="width:100%" onclick="seedDemo()">🎲 Demo veri ekle (test için)</button>
+    </div>
+  `;
+}
+function resetData(){
+  if(!confirm("Tüm görev kayıtları silinecek. Emin misin?")) return;
+  state.completions=[]; save(); toast("Sıfırlandı"); renderAdmin();
+}
+function seedDemo(){
+  const samples=[
+    {u:"c1",t:"ogren",txt:"Bugün ışığın prizmadan geçince renklere ayrıldığını öğrendim, buna tayf deniyormuş ve gökkuşağı da böyle oluşuyormuş.",st:"approved"},
+    {u:"c1",t:"dis_sabah",st:"approved"},{u:"c1",t:"yatak",st:"approved"},{u:"c1",t:"fiziksel",st:"approved"},
+    {u:"c1",t:"kahvalti",st:"approved"},{u:"c1",t:"kitap",txt:"Define Adası okudum, korsanlar hazineyi arıyordu",st:"pending"},
+    {u:"c2",t:"dis_sabah",st:"approved"},{u:"c2",t:"el",st:"approved"},{u:"c2",t:"kahvalti",st:"approved"},
+    {u:"c2",t:"sofra",st:"pending"},{u:"c2",t:"su",st:"approved"},
+    {u:"c3",t:"ogren",txt:"Penguenlerin dizleri aslında tüylerinin altında saklıymış, dışarıdan göremiyoruz.",st:"approved"},
+    {u:"c3",t:"fiziksel",st:"approved"},{u:"c3",t:"dis_sabah",st:"approved"},
+  ];
+  samples.forEach((s,i)=>{
+    const task=TASKS.find(x=>x.id===s.t);
+    state.completions.push({
+      id:"demo"+i, userId:s.u, taskId:s.t, date:todayStr(), week:weekKey(),
+      ts:Date.now()-i*60000, status:s.st,
+      proof:{type:task.proof,text:s.txt||"",photo:null},
+      aiNote:s.t==="ogren"?fakeAIEval(s.txt||"", user(s.u).age):null,
+      approverId:s.st!=="pending"?"p1":null
+    });
+  });
+  save(); toast("Demo veri eklendi"); renderAdmin();
+}
+
+/* ======================= SWITCH SILHOUETTE SVG ======================= */
+function switchSVG(bright, blur, revealed){
+  // basit Switch Lite benzeri görsel; brightness/blur ile siluet -> net
+  const filter = `brightness(${bright}) blur(${blur}px) saturate(${(0.3+bright).toFixed(2)})`;
+  return `<svg class="silo-img" viewBox="0 0 220 130" style="filter:${filter}" xmlns="http://www.w3.org/2000/svg">
+    <rect x="35" y="15" width="150" height="100" rx="14" fill="#2B2B2B"/>
+    <rect x="48" y="26" width="124" height="78" rx="6" fill="#7AD7F0"/>
+    <circle cx="30" cy="40" r="9" fill="#FFCB05"/>
+    <circle cx="30" cy="65" r="11" fill="#1D6FB8"/>
+    <rect x="22" y="84" width="16" height="10" rx="2" fill="#E60012"/>
+    <rect x="24" y="78" width="12" height="6" rx="2" fill="#00A0E9"/>
+    <circle cx="190" cy="48" r="5" fill="#E60012"/>
+    <circle cx="190" cy="62" r="5" fill="#00A651"/>
+    <circle cx="183" cy="55" r="5" fill="#FFCB05"/>
+    <circle cx="197" cy="55" r="5" fill="#1D6FB8"/>
+    <rect x="186" y="78" width="14" height="18" rx="3" fill="#444"/>
+    ${revealed?'<text x="110" y="125" text-anchor="middle" font-size="10" fill="#fff" font-weight="bold">SWITCH</text>':''}
+  </svg>`;
+}
+
+/* ======================= MODAL / TOAST ======================= */
+function showModal(html){
+  document.getElementById("modalMount").innerHTML =
+    `<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal">${html}</div></div>`;
+}
+function closeModal(){ document.getElementById("modalMount").innerHTML=""; }
+function toast(msg){
+  const m=document.getElementById("toastMount");
+  m.innerHTML=`<div class="toast">${msg}</div>`;
+  setTimeout(()=>{m.innerHTML="";},2200);
+}
+
+/* ======================= BOOT ======================= */
+renderLogin();
+</script>
+</body>
+</html>

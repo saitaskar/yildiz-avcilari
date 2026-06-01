@@ -1,0 +1,21 @@
+# local / private
+seed.local.js
+*.local.js
+.dev.vars
+.env
+*.local
+
+# build / deps
+node_modules/
+dist/
+.wrangler/
+
+# editor / os
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# scratch
+_check.js
+*.tmp
