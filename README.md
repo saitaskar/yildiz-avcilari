@@ -1,8 +1,8 @@
-# 🎮 Görev Portalı
+# 🌟 Yıldız Avcıları
 
 > Çocuklara oyunlaştırma ile iyi alışkanlık kazandıran, RPG temalı bir aile görev portalı.
 
-Çocuklar haftalık ve günlük görevleri tamamlar, kanıt yükler, ebeveyn/onaylayıcı onaylar ve topladıkları enerji (XP) ile ortadaki **gizemli siluet** netleşir. Hedefe ulaşınca ödül açılır. "Who's That Pokémon?" mantığında bir merak mekaniği üstüne kurulu.
+Çocuklar haftalık ve günlük görevleri tamamlar, kanıt yükler, ebeveyn/onaylayıcı onaylar ve topladıkları **yıldızlarla** (XP) ortadaki **gizemli siluet** netleşir. Hedefe ulaşınca ödül açılır. "Who's That Pokémon?" mantığında bir merak mekaniği üstüne kurulu.
 
 Gerçek hayatta bir karne hediyesi (Nintendo Switch Lite) bedavadan verilmek yerine, çocukların güzel alışkanlıklarla "hak etmesi" için tasarlandı.
 
@@ -67,7 +67,7 @@ Gerçek hayatta bir karne hediyesi (Nintendo Switch Lite) bedavadan verilmek yer
 ## 📂 Yapı
 
 ```
-gorev-portal/
+yildiz-avcilari/
 ├── index.html      # tüm uygulama (Faz 1 prototip)
 ├── README.md
 └── LICENSE

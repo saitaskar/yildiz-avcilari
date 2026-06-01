@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Görev Portalı</title>
+<title>Yıldız Avcıları</title>
 <style>
   :root{
     --primary:#6C2BD9;      /* mor */
@@ -212,9 +212,9 @@
 <!-- ============ LOGIN ============ -->
 <div id="loginView">
   <div class="login-hero">
-    <div class="logo">🎮</div>
-    <h1 id="brandTitle">Görev Portalı</h1>
-    <p>Görevleri tamamla, hediyeye yaklaş!</p>
+    <div class="logo">🌟</div>
+    <h1 id="brandTitle">Yıldız Avcıları</h1>
+    <p>Yıldızları topla, ödülü aç!</p>
   </div>
   <div class="wrap" style="padding-top:0;">
     <div class="card">
@@ -237,7 +237,7 @@
 <!-- ============ APP ============ -->
 <div id="appView" class="hidden">
   <div class="topbar">
-    <div class="brand">🎮 <span id="brandTop">Görev Portalı</span></div>
+    <div class="brand">🌟 <span id="brandTop">Yıldız Avcıları</span></div>
     <div class="who">
       <span id="whoLabel"></span>
       <button class="btn-logout" onclick="logout()">Çıkış</button>
@@ -255,7 +255,7 @@
    GÖREV PORTALI - Faz 1 prototip (localStorage)
    ========================================================= */
 
-const APP_NAME = "Görev Portalı";          // isim netlesince burayi degistir
+const APP_NAME = "Yıldız Avcıları";        // marka adi
 const SEASON_END = "2026-06-26";           // karne gunu
 const GOAL_XP = 2500;                       // siluet acilma hedefi (her cocuk)
 const STORE_KEY = "gp_state_v2";
@@ -659,7 +659,7 @@ function renderChild(){
       </div>
       <div class="reveal-label">${revealed?revealLabel:milestoneText(th,pct)}</div>
       <div class="xpbar-wrap">
-        <div class="xpbar-top"><span>${xp} ⚡</span><span>Hedef ${state.season.goal}</span></div>
+        <div class="xpbar-top"><span>${xp} ⭐</span><span>Hedef ${state.season.goal}</span></div>
         <div class="xpbar"><div class="xpbar-fill" style="width:${pct}%"></div></div>
         <div class="pct-big">%${pct} tamamlandı · Karne günü 26 Haziran</div>
       </div>
@@ -719,7 +719,7 @@ function taskRow(task){
         ${subText?`<div style="font-size:12px;color:var(--muted);margin-top:1px">${subText}</div>`:""}
         ${hintLine}
         <div class="t-meta">
-          <span class="chip xp">+${task.xp} XP</span>
+          <span class="chip xp">+${task.xp} ⭐</span>
           <span class="chip win">🕐 ${winLabel(task)}</span>
           ${countChip}${stateChip}
         </div>
@@ -772,7 +772,7 @@ function openDo(taskId){
   const th = themeOf(session);
   showModal(`
     <h3>${task.emoji} ${tt.title}</h3>
-    <div class="msub">+${task.xp} ⚡ · ${th?th.approval:'Onay'} sonrası eklenir</div>
+    <div class="msub">+${task.xp} ⭐ · ${th?th.approval:'Onay'} sonrası eklenir</div>
     ${inner}
     <div class="modal-actions">
       <button class="btn-ghost" onclick="closeModal()">Vazgeç</button>
