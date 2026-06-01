@@ -446,15 +446,15 @@ let pinTarget = null;     // user being authenticated
 let loginRole = "child";
 
 function load(){
+  const fresh = JSON.parse(JSON.stringify(SEED));
   try{
     const raw = localStorage.getItem(STORE_KEY);
     if(raw) return JSON.parse(raw);
-  }catch(e){}
-  const fresh = JSON.parse(JSON.stringify(SEED));
-  localStorage.setItem(STORE_KEY, JSON.stringify(fresh));
+    localStorage.setItem(STORE_KEY, JSON.stringify(fresh));
+  }catch(e){ /* localStorage yoksa (gizli mod/file://) bellekte calis */ }
   return fresh;
 }
-function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
 function user(id){ return state.users.find(u=>u.id===id); }
 
 /* ======================= HELPERS ======================= */
@@ -558,7 +558,7 @@ function enterApp(){
   if(session.role==="child") applyTheme(themeOf(session)); else resetTheme();
   renderApp();
 }
-function logout(){ resetTheme(); session=null; pinTarget=null; pinDraft=""; document.getElementById("wizardMount").innerHTML=""; document.getElementById("appView").classList.add("hidden"); document.getElementById("loginView").classList.remove("hidden"); renderLogin(); }
+function logout(){ resetTheme(); session=null; pinTarget=null; pinDraft=""; document.getElementById("wizardMount").innerHTML=""; document.getElementById("appBody").innerHTML=""; document.getElementById("appView").classList.add("hidden"); document.getElementById("loginView").classList.remove("hidden"); renderLogin(); }
 
 /* ======================= RPG ONBOARDING WIZARD ======================= */
 let wizPickedTheme=null, wizStep=0;
@@ -908,7 +908,7 @@ function renderAdmin(){
     </div>
     <div class="card">
       <h2>Çocuklar</h2>
-      ${state.users.filter(u=>u.role==="child").map(kidStatusRow).join("")}
+      ${state.users.filter(u=>u.role==="child").map(u=>kidStatusRow(u.id)).join("")}
     </div>
     <div class="card">
       <h2>Görev kataloğu (${TASKS.length})</h2>
@@ -956,7 +956,7 @@ function seedDemo(){
 /* ======================= SWITCH SILHOUETTE SVG ======================= */
 function switchSVG(bright, blur, revealed){
   // basit Switch Lite benzeri görsel; brightness/blur ile siluet -> net
-  const filter = `brightness(${bright}) blur(${blur}px) saturate(${(0.3+bright).toFixed(2)})`;
+  const filter = `brightness(${bright}) blur(${blur}px) saturate(${(0.3+Number(bright)).toFixed(2)})`;
   return `<svg class="silo-img" viewBox="0 0 220 130" style="filter:${filter}" xmlns="http://www.w3.org/2000/svg">
     <rect x="35" y="15" width="150" height="100" rx="14" fill="#2B2B2B"/>
     <rect x="48" y="26" width="124" height="78" rx="6" fill="#7AD7F0"/>
