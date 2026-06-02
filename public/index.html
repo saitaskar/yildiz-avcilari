@@ -545,7 +545,7 @@ function renderLogin(){
   list.innerHTML = people.map(u=>`
     <div class="name-item ${pinTarget&&pinTarget.id===u.id?'active':''}" onclick="pickUser('${u.id}')">
       <div class="av">${u.av}</div>
-      <div>${u.name}<small>${u.role==='child'?u.age+' yaş':(u.title||'')}</small></div>
+      <div>${u.name}<small>${u.role==='child'?'Yıldız Avcısı':(u.title||'')}</small></div>
     </div>`).join("");
   document.getElementById("pinBox").classList.toggle("hidden", !pinTarget);
   if(pinTarget){
@@ -573,7 +573,10 @@ async function quickLogin(id){
 }
 function renderPin(){
   const dots = document.getElementById("pinDots");
-  dots.innerHTML = [0,1,2,3].map(i=>`<div class="pin-dot ${i<pinDraft.length?'filled':''}"></div>`).join("");
+  const n = Math.max(4, pinDraft.length);   // en az 4 nokta, uzun PIN'de uzar
+  let html="";
+  for(let i=0;i<n;i++) html += `<div class="pin-dot ${i<pinDraft.length?'filled':''}"></div>`;
+  dots.innerHTML = html;
 }
 function renderKeypad(){
   const kp = document.getElementById("keypad");
@@ -587,8 +590,8 @@ function renderKeypad(){
 function pinKey(k){
   const err=document.getElementById("pinErr"); err.textContent="";
   if(k==="sil"){ pinDraft=pinDraft.slice(0,-1); renderPin(); return; }
-  if(k==="ok"){ tryLogin(); return; }
-  if(pinDraft.length<4){ pinDraft+=k; renderPin(); if(pinDraft.length===4) setTimeout(tryLogin,150); }
+  if(k==="ok"){ tryLogin(); return; }       // "Giris" ile onay (degisken uzunluk: 4-8 hane)
+  if(pinDraft.length<8){ pinDraft+=k; renderPin(); }
 }
 async function tryLogin(){
   if(!pinTarget) return;

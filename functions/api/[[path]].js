@@ -150,10 +150,14 @@ export async function onRequest(context){
   if(method==="POST"){ try{ body = await request.json(); }catch(e){ body = {}; } }
 
   try{
-    /* --- public: login ekrani icin isim listesi (PIN yok) --- */
+    /* --- public: login ekrani icin (PIN yok, mahremiyet: ilk ad + avatar, yas/soyad yok) --- */
     if(route==="users" && method==="GET"){
-      const rs = await env.DB.prepare("SELECT id,role,name,age,av,title FROM users").all();
-      return json({ users: rs.results||[] });
+      const rs = await env.DB.prepare("SELECT id,role,name,av,title FROM users").all();
+      const users = (rs.results||[]).map(u=>({
+        id:u.id, role:u.role, av:u.av, title:u.title,
+        name: String(u.name||"").split(" ")[0]   // sadece ilk ad
+      }));
+      return json({ users });
     }
 
     /* --- login: PIN dogrulama + brute-force korumasi --- */
