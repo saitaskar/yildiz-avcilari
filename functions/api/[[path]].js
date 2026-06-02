@@ -187,10 +187,10 @@ export async function onRequest(context){
   try{
     /* --- public: login ekrani icin (PIN yok, mahremiyet: ilk ad + avatar, yas/soyad yok) --- */
     if(route==="users" && method==="GET"){
-      const rs = await env.DB.prepare("SELECT id,role,name,av,title FROM users").all();
+      const rs = await env.DB.prepare("SELECT id,role,name,av FROM users").all();
       const users = (rs.results||[]).map(u=>({
-        id:u.id, role:u.role, av:u.av, title:u.title,
-        name: String(u.name||"").split(" ")[0]   // sadece ilk ad
+        id:u.id, role:u.role, av:u.av,
+        name: String(u.name||"").split(" ")[0]   // sadece ilk ad, rol etiketi yok
       }));
       return json({ users });
     }

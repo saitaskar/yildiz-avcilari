@@ -558,7 +558,7 @@ function renderLogin(){
   list.innerHTML = people.map(u=>`
     <div class="name-item ${pinTarget&&pinTarget.id===u.id?'active':''}" onclick="pickUser('${u.id}')">
       <div class="av">${u.av}</div>
-      <div>${u.name}<small>${u.role==='child'?'Yıldız Avcısı':(u.title||'')}</small></div>
+      <div>${u.name}<small>${u.role==='child'?'Yıldız Avcısı':''}</small></div>
     </div>`).join("");
   document.getElementById("pinBox").classList.toggle("hidden", !pinTarget);
   if(pinTarget){
