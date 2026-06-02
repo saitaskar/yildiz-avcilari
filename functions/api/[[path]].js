@@ -70,26 +70,57 @@ async function aiChat(env, messages, age, botName, themeMood, childTurns){
     "- Açıkladıkça, gerçekten anladığını sınayan 1 takip sorusu daha sor.\n"+
     "- Metin ansiklopedi/ders kitabı gibi kusursuz ve yetişkin ağzındaysa kopya şüphelidir: 'kendi cümlelerinle anlatır mısın?' diye iste.\n\n"+
     "KARAR:\n"+
-    "- Çocuk konuyu KENDİ cümleleriyle açıklayıp anladığını gösterdiyse: action='pass', reply='kutlama'.\n"+
-    "- Hâlâ yüzeysel/eksikse: action='ask', reply='kısa bir soru'.\n"+
+    "- Çocuk konuyu KENDİ cümleleriyle, BİRKAÇ CÜMLEYLE açıklayıp en az 2 sorunu yanıtladıysa ve anladığı belliyse: action='pass', reply='kutlama'.\n"+
+    "- Hâlâ yüzeysel, tek kelimelik, sadece konu adı veya eksikse: action='ask', reply='kısa bir soru'.\n"+
     "- Çocuk açıklayamıyor, bilmiyor ya da konu dışıysa: action='fail', reply='nazikçe biraz daha araştırıp gelmesini söyle'.\n"+
-    (force ? "ÖNEMLİ: Sohbet uzadı, ARTIK karar ver. action SADECE 'pass' veya 'fail' olsun, 'ask' KULLANMA.\n" : "")+
+    "ÇOK ÖNEMLİ: İlk mesajlar genelde yüzeyseldir. Çocuk gerçek bir AÇIKLAMA yapana ve en az 2 sorunu cevaplayana kadar ASLA 'pass' verme. Tek kelime ('neptün') ya da sadece konu adı ('gezegenleri öğrendim') KESİNLİKLE pass değildir, daha derine in.\n"+
+    (force ? "NOT: Sohbet uzadı, ARTIK karar ver. action SADECE 'pass' veya 'fail' olsun, 'ask' KULLANMA.\n" : "")+
     "SADECE şu JSON ile yanıt ver, başka hiçbir şey yazma: {\"action\":\"ask|pass|fail\",\"reply\":\"...\"}";
-  let r = null;
-  try{
-    r = await env.AI.run(AI_MODEL, { max_tokens:300, messages:[{role:"system",content:sys}].concat(messages) });
-    let raw = (r && (r.response != null ? r.response : r.result));
-    if(typeof raw !== "string") raw = JSON.stringify(raw||{});
-    const m = raw.match(/\{[\s\S]*\}/);
-    const p = m ? JSON.parse(m[0]) : {action:"ask", reply:"Biraz daha anlatır mısın?"};
-    let action = ["ask","pass","fail"].includes(p.action) ? p.action : "ask";
-    if(force && action==="ask") action = "pass";  // guvenlik: sonsuz dongu olmasin
-    return { action, reply: (p.reply||"Anlat bakalım.").slice(0,400) };
-  }catch(e){
-    // AI hatasi: cocugu magdur etme, birkac turdan sonra gecir
-    return childTurns>=2 ? {action:"pass", reply:"Güzel anlattın, görevi tamamladın! ⭐"}
-                         : {action:"ask", reply:"Biraz daha anlatır mısın?"};
+  const raw = await callAI(env, sys, messages);
+  if(raw == null){
+    // iki saglayici da basarisiz: gecirme; devam et (force ise pass)
+    return force ? {action:"pass", reply:"Bugünlük bu kadar yeter, güzeldi! ⭐"}
+                 : {action:"ask", reply:"Hmm tam anlayamadım, biraz daha anlatır mısın?"};
   }
+  const m = raw.match(/\{[\s\S]*\}/);
+  let p=null; try{ p = m ? JSON.parse(m[0]) : null; }catch(e){ p=null; }
+  if(!p) return force ? {action:"pass", reply:"Güzel sohbetti, tamamladın! ⭐"}
+                      : {action:"ask", reply:"Biraz daha açar mısın?"};
+  let action = ["ask","pass","fail"].includes(p.action) ? p.action : "ask";
+  if(force && action==="ask") action = "pass";  // guvenlik: sonsuz dongu olmasin
+  return { action, reply: (p.reply||"Anlat bakalım.").slice(0,400) };
+}
+
+/* Claude (birincil, ANTHROPIC_API_KEY) -> Workers AI (yedek). Her biri 1 retry. Ham metin doner ya da null. */
+async function callAI(env, sys, messages){
+  // Claude
+  if(env.ANTHROPIC_API_KEY){
+    let cm = messages;
+    if(cm.length && cm[0].role==="assistant") cm = cm.slice(1); // Claude user ile baslamali
+    if(!cm.length) cm = [{role:"user", content:"merhaba"}];
+    for(let i=0;i<2;i++){
+      try{
+        const r = await fetch("https://api.anthropic.com/v1/messages", {
+          method:"POST",
+          headers:{ "content-type":"application/json", "x-api-key":env.ANTHROPIC_API_KEY, "anthropic-version":"2023-06-01" },
+          body: JSON.stringify({ model:"claude-haiku-4-5-20251001", max_tokens:300, system:sys, messages:cm })
+        });
+        if(r.ok){ const d = await r.json(); const t = d.content && d.content[0] && d.content[0].text; if(t) return t; }
+      }catch(e){}
+    }
+  }
+  // Workers AI yedek
+  if(env.AI){
+    for(let i=0;i<2;i++){
+      try{
+        const r = await env.AI.run(AI_MODEL, { max_tokens:300, messages:[{role:"system",content:sys}].concat(messages) });
+        let raw = (r && (r.response != null ? r.response : r.result));
+        if(typeof raw === "string" && raw) return raw;
+        if(raw) return JSON.stringify(raw);
+      }catch(e){}
+    }
+  }
+  return null;
 }
 
 /* ---------- state (rol bazli) ---------- */
