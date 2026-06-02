@@ -1,84 +1,114 @@
-# 🌟 Yıldız Avcıları
+# 🌟 Yıldız Avcıları (Star Hunters)
 
-> Çocuklara oyunlaştırma ile iyi alışkanlık kazandıran, RPG temalı bir aile görev portalı.
+> 🇹🇷 [Türkçe README](README.tr.md)
 
-Çocuklar haftalık ve günlük görevleri tamamlar, kanıt yükler, ebeveyn/onaylayıcı onaylar ve topladıkları **yıldızlarla** (XP) ortadaki **gizemli siluet** netleşir. Hedefe ulaşınca ödül açılır. "Who's That Pokémon?" mantığında bir merak mekaniği üstüne kurulu.
+A gamified, RPG-themed family task portal that helps kids build good habits.
 
-Gerçek hayatta bir karne hediyesi (Nintendo Switch Lite) bedavadan verilmek yerine, çocukların güzel alışkanlıklarla "hak etmesi" için tasarlandı.
+Kids complete daily and weekly tasks, upload proof, a parent approves, and the **stars** they collect gradually reveal a **mystery reward** in the center ("Who's That Pokémon?"-style curiosity mechanic). When the goal is reached, the reward unlocks.
 
----
+Built so that a real reward (a gift) isn't just handed over for free, but **earned** through good habits — turned into a fun game.
 
-## ✨ Öne çıkanlar
+**🕹️ Live showcase:** [yildizavcilari.cryme.tr/demo.html](https://yildizavcilari.cryme.tr/demo.html) (TR/EN)
 
-- **RPG Başlangıç Sihirbazı** — Çocuk ilk girişte sinematik bir intro ile karşılanır, bir *sınıf* seçer ve bir kılavuz bot sistemi anlatır.
-- **3 sürükleyici tema** — seçilen temaya göre tüm arayüz, renkler ve görev dili değişir:
-  - 🚀 **Galaktik Kaşif** (Sci-Fi) — "Yer Çekimi Kalkanlarını Aktif Et", kılavuz: NOVA
-  - ⚔️ **Fantastik Diyarlar** (RPG) — "Beyaz Zırh Bakımı", kılavuz: Eldric
-  - 🧱 **Piksel Evreni** (Voxel) — "Spawn Noktasını Düzenle", kılavuz: Bit
-- **Zaman pencereli görevler** — her görev günün belli saatlerinde aktif (yatak toplama sabah, diş fırçalama sabah+akşam).
-- **Yaşa göre içerik** — 8 yaş "günün hayvanı", 13 yaş "yapay zeka nasıl çalışır".
-- **Yapay zeka onaylı öğrenme görevi** — çocuğun yazdığı "yeni öğrendiğim şey" metnini bir bot okuyup yaşına uygun, kendi cümleleri mi diye değerlendirir (prototipte simüle, backend'de gerçek model).
-- **Onay akışı** — çocuk kanıt gönderir, ebeveyn/teyze tek dokunuşla onaylar/reddeder, XP havuza düşer.
-- **Dinamik siluet** — XP doldukça tema diline göre metin değişir ("Mühür çatlamaya başladı", "Yapı %50 craft edildi").
-- **Dostça sıralama** — her çocuk kendi barını doldurur, ortak liderlik tablosu motive eder.
+> Built with "vibe coding" — designed and shipped end-to-end with an AI coding agent.
 
 ---
 
-## 🕹️ Demo
+## ✨ Highlights
 
-`index.html` tek dosya, hiçbir kurulum gerektirmez. Tarayıcıda aç, veriler `localStorage`'da tutulur.
-
-**Demo giriş bilgileri:**
-
-| Rol | İsim | PIN |
-|---|---|---|
-| 🧒 Çocuk | Demir (13) | `1111` |
-| 🧒 Çocuk | Kuzey (8) | `2222` |
-| 🧒 Çocuk | Toprak (13) | `3333` |
-| 👪 Onaylayıcı | Elif / Mert / Selin / Derya / Can | `1234` |
-| ⭐ Yönetici | Yönetici | `0000` |
-
-> Yönetici panelinden "Demo veri ekle" ile sistemi dolu görebilirsin. İsimler tamamen demo amaçlıdır.
-
----
-
-## 🧱 Teknoloji
-
-**Faz 1 (bu repo):** Tek dosya HTML + CSS + vanilla JS, `localStorage` ile çalışan tam akışlı prototip. Build step yok.
-
-**Faz 2 (planlanan):** Cloudflare üzerinde production
-- **Backend:** Cloudflare Worker (API)
-- **Veritabanı:** D1 (görevler, kullanıcılar, tamamlamalar)
-- **Depolama:** R2 (fotoğraf kanıtları)
-- **AI:** Öğrenme görevini değerlendiren dil modeli
+- **RPG onboarding wizard** — On first login the kid gets a cinematic intro, picks a *class*, and a guide bot explains the system like a game tutorial.
+- **3 immersive themes** — the whole UI, colors and task language transform to the chosen theme:
+  - 🚀 **Galactic Explorer** (Sci-Fi) — "Activate Gravity Shields", guide: NOVA
+  - ⚔️ **Fantasy Realms** (RPG) — "Polish the White Armor", guide: Eldric
+  - 🧱 **Pixel Universe** (Voxel) — "Set Up the Spawn Point", guide: Bit
+- **AI learning chat** — The weekly "learn something new" task is a *Socratic conversation*: the guide bot asks what the kid learned, probes with questions to verify real understanding, and only then awards the stars. Memorization and copy-paste don't pass. Powered by Claude Haiku (with a Cloudflare Workers AI fallback).
+- **Time-gated tasks** — each task is active during certain hours (make the bed in the morning, brush teeth morning + evening).
+- **Age-aware content** — age 8 gets "animal of the day", age 13 gets "how does AI work".
+- **Approval flow** — kid sends proof, parent/aunt approves or rejects with one tap, stars drop into the pool.
+- **Custom tasks** — parents can define their own one-off tasks for a kid.
+- **Rewards log & metrics** — admin dashboard tracks who earned what, total stars and task counts.
+- **Dynamic silhouette** — as stars fill, milestone text changes in theme language ("The seal is cracking", "Structure 50% crafted").
+- **Friendly leaderboard** — each kid fills their own bar; a shared board keeps it motivating.
+- **Security** — server-side PIN auth (HMAC tokens), brute-force lockout, privacy-minimal public endpoints, photo size limits.
 
 ---
 
-## 🗺️ Yol haritası
+## 🧱 Tech stack
 
-- [x] Faz 1 — Frontend prototip (tema motoru, sihirbaz, onay akışı, siluet)
-- [ ] Faz 2 — Cloudflare backend (Worker + D1 + R2), gerçek PIN auth, AI değerlendirme
-- [ ] Faz 3 — Deploy + her ay yeni sezon / yeni ödül
-- [ ] Ebeveynin özel görev tanımlaması
-- [ ] Bildirimler (görev zamanı geldi, onay bekliyor)
+Single-page vanilla JS frontend (no build step) on a fully serverless Cloudflare backend:
+
+- **Hosting + API:** Cloudflare Pages + Pages Functions (`/api/*` on the same domain, no CORS)
+- **Database:** Cloudflare D1 (users, completions, custom tasks, seasons, reward log)
+- **Storage:** Cloudflare R2 (photo proofs)
+- **AI:** Claude Haiku (primary) with Cloudflare Workers AI (Llama) as fallback
+- **Auth:** HMAC-signed session tokens, PIN login with rate limiting
+
+The task catalog lives in code; everything user-generated lives in D1.
 
 ---
 
-## 📂 Yapı
+## 📂 Structure
 
 ```
 yildiz-avcilari/
-├── index.html      # tüm uygulama (Faz 1 prototip)
-├── README.md
+├── public/
+│   ├── index.html        # the whole app (frontend)
+│   └── demo.html          # bilingual (TR/EN) showcase page
+├── functions/
+│   └── api/[[path]].js    # Pages Functions API (auth, tasks, approvals, AI chat, rewards)
+├── backend/
+│   ├── schema.sql         # D1 schema
+│   └── seed.sql           # demo seed (generic names; real family data is never committed)
+├── wrangler.toml
+├── README.md / README.tr.md
 └── LICENSE
 ```
 
 ---
 
-## 📝 Lisans
+## 🚀 Run it yourself
 
-MIT. Detay için [LICENSE](LICENSE).
+Requires a Cloudflare account and [Wrangler](https://developers.cloudflare.com/workers/wrangler/).
+
+```bash
+# 1. create the D1 database, put the id in wrangler.toml
+wrangler d1 create yildiz-db
+
+# 2. create the R2 bucket
+wrangler r2 bucket create yildiz-proofs
+
+# 3. apply schema + demo seed
+wrangler d1 execute yildiz-db --remote --file backend/schema.sql
+wrangler d1 execute yildiz-db --remote --file backend/seed.sql
+
+# 4. set the session secret (and optionally ANTHROPIC_API_KEY for Claude)
+wrangler pages secret put SESSION_SECRET --project-name=yildiz-avcilari
+
+# 5. deploy
+wrangler pages deploy
+```
+
+Without `ANTHROPIC_API_KEY`, the AI chat automatically uses Cloudflare Workers AI (free tier), so no extra key is required to get started.
+
+Demo seed logins: children `1111` / `2222` / `3333`, approvers `1234`, admin `0000`.
 
 ---
 
-*Sevgiyle, oyunlaştırma ile çocuklara iyi alışkanlıklar için. 💙*
+## 🗺️ Roadmap
+
+- [x] Phase 1 — Frontend prototype (theme engine, wizard, approval flow, silhouette)
+- [x] Phase 2 — Cloudflare backend (Pages Functions + D1 + R2), server-side PIN auth, AI learning chat
+- [x] Custom tasks (parent-defined) + rewards log & metrics
+- [ ] Monthly season cycle (new reward each month)
+- [ ] Admin-editable task catalog
+- [ ] Notifications (task due, awaiting approval)
+
+---
+
+## 📝 License
+
+MIT — see [LICENSE](LICENSE).
+
+---
+
+*Made with love, to turn good habits into a game for kids. 💙*
