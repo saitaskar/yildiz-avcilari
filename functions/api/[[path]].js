@@ -8,6 +8,35 @@ const TOKEN_TTL = 1000*60*60*12;               // 12 saat (calinan token riskini
 const MAX_PHOTO_CHARS = 750000;                // ~550KB base64 foto siniri (R2 kotuye kullanim)
 const AI_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const MAX_CHILD_TURNS = 4;                     // bu kadar mesajdan sonra AI karar vermek zorunda
+// gorev XP'leri (frontend TASKS ile ESLESMELI; katalog kodda sabit oldugu icin burada da var)
+const TASK_XP = {ogren:100, ekransiz:60, fiziksel:40, yatak:15, dis_sabah:10, dis_aksam:10,
+  el:5, su:5, kahvalti:10, ogle:10, aksam:10, sofra:15, kitap:15};
+
+/* cocugun onayli toplam XP'si (kod gorevleri + ozel gorevler) */
+async function computeXP(env, userId){
+  const comps = (await env.DB.prepare("SELECT task_id FROM completions WHERE user_id=? AND status='approved'").bind(userId).all()).results||[];
+  let total=0; const customIds=[];
+  for(const c of comps){ if(TASK_XP[c.task_id]!=null) total+=TASK_XP[c.task_id]; else customIds.push(c.task_id); }
+  if(customIds.length){
+    const cts=(await env.DB.prepare("SELECT id,xp FROM custom_tasks WHERE child_id=?").bind(userId).all()).results||[];
+    const m={}; cts.forEach(c=>m[c.id]=c.xp);
+    for(const id of customIds) total += (m[id]||0);
+  }
+  return total;
+}
+/* hedefe ulastiysa ve daha once kaydedilmemisse odul kazanimini logla */
+async function checkReward(env, userId){
+  const u = await env.DB.prepare("SELECT role FROM users WHERE id=?").bind(userId).first();
+  if(!u || u.role!=="child") return;
+  const s = await env.DB.prepare("SELECT * FROM seasons WHERE active=1 LIMIT 1").first();
+  if(!s) return;
+  const xp = await computeXP(env, userId);
+  if(xp < s.goal) return;
+  const exists = await env.DB.prepare("SELECT id FROM rewards_log WHERE user_id=? AND season_id=?").bind(userId, s.id).first();
+  if(exists) return;
+  await env.DB.prepare("INSERT INTO rewards_log (id,user_id,season_id,prize,xp_at_win,ts) VALUES (?,?,?,?,?,?)")
+    .bind("rw_"+Date.now()+"_"+Math.floor(Math.random()*1e6), userId, s.id, s.prize, xp, Date.now()).run();
+}
 
 /* ---------- yardimcilar ---------- */
 const json = (data, status=200) =>
@@ -139,7 +168,11 @@ async function getState(env, me){
   }));
   const ctRs = await env.DB.prepare("SELECT * FROM custom_tasks WHERE status IN ('active','done')").all();
   const customTasks = (ctRs.results||[]).map(c=>({ id:c.id, childId:c.child_id, title:c.title, emoji:c.emoji, xp:c.xp, by:c.created_by, status:c.status }));
-  return { season, users, completions, customTasks, me: safeUser(me) };
+  let rewards = null;
+  if(me.role==="admin"){
+    rewards = (await env.DB.prepare("SELECT * FROM rewards_log ORDER BY ts DESC").all()).results||[];
+  }
+  return { season, users, completions, customTasks, rewards, me: safeUser(me) };
 }
 
 /* ====================== ROUTER ====================== */
@@ -229,6 +262,7 @@ export async function onRequest(context){
           "INSERT INTO completions (id,user_id,task_id,date,week,ts,status,proof_text,proof_photo_key,ai_ok,ai_note,approver_id) "+
           "VALUES (?,?,?,?,?,?,'approved',?,NULL,1,?,'ai')"
         ).bind(id, me.id, "ogren", date, week, Date.now(), proof, ev.reply).run();
+        await checkReward(env, me.id);   // hedefe ulasti mi?
         return json({ reply:ev.reply, done:true, passed:true });
       }
       if(ev.action==="fail") return json({ reply:ev.reply, done:true, passed:false });
@@ -253,6 +287,7 @@ export async function onRequest(context){
       if(decision==="approved" && String(comp.task_id).startsWith("ct_")){
         await env.DB.prepare("UPDATE custom_tasks SET status='done' WHERE id=?").bind(comp.task_id).run();
       }
+      if(decision==="approved") await checkReward(env, comp.user_id);   // hedefe ulasti mi?
       return json({ ok:true });
     }
 

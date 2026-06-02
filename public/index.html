@@ -1160,6 +1160,21 @@ function renderAdmin(){
       ${state.users.filter(u=>u.role==="child").map(u=>kidStatusRow(u.id)).join("")}
     </div>
     <div class="card">
+      <h2>🏆 Kazanılan Hediyeler</h2>
+      ${(state.rewards&&state.rewards.length) ? state.rewards.map(r=>{
+        const u=user(r.user_id); const d=new Date(r.ts).toLocaleDateString("tr-TR");
+        return `<div class="lb-row"><div class="lb-av">${u?u.av:'🎁'}</div><div class="lb-body"><b>${u?u.name:r.user_id}</b><div style="font-size:12px;color:var(--muted)">${PRIZE_LABEL[r.prize]||r.prize} · ${d}</div></div><div class="lb-xp">${r.xp_at_win} ⭐</div></div>`;
+      }).join("") : `<div class="empty"><span class="e">🎁</span>Henüz hediye kazanan yok. İlk kim olacak?</div>`}
+    </div>
+    <div class="card">
+      <h2>📊 İstatistikler</h2>
+      ${state.users.filter(u=>u.role==="child").map(u=>{
+        const done=state.completions.filter(c=>c.userId===u.id && c.status==="approved").length;
+        const pend=state.completions.filter(c=>c.userId===u.id && c.status==="pending").length;
+        return `<div class="kv"><span>${u.av} ${u.name}</span><b>${userXP(u.id)} ⭐ · ${done} görev${pend?' · '+pend+' onayda':''}</b></div>`;
+      }).join("")}
+    </div>
+    <div class="card">
       <h2>Görev kataloğu (${TASKS.length})</h2>
       <div class="sub">Faz 2'de düzenlenebilir olacak.</div>
       ${TASKS.map(t=>`<div class="admin-task">
