@@ -840,20 +840,49 @@ async function submitDo(taskId){
   const txt = txtEl?txtEl.value.trim():"";
   if(task.proof==="text" && txt.length<3){ toast("Lütfen birkaç cümle yaz"); return; }
   const btn = document.querySelector(".modal .btn-primary");
-  if(btn){ btn.disabled=true; btn.textContent="Gönderiliyor..."; }
+  if(btn){ btn.disabled=true; btn.textContent= task.ai ? "Yardımcı okuyor..." : "Gönderiliyor..."; }
   try{
     const r = await api("/completion", {method:"POST", body:{
       taskId:task.id, date:todayStr(), week:weekKey(),
       proofText:txt, photoB64:pendingPhoto
     }});
+    if(r.rejected){
+      // AI begenmedi: modal acik kalsin, yorumu goster, cocuk duzeltsin
+      showAiReject(r.aiNote.note);
+      if(btn){ btn.disabled=false; btn.textContent="Tekrar Gönder"; }
+      return;
+    }
     closeModal();
     await refreshState();
-    toast(r.aiNote ? "Yardımcı okudu ✓ Onaya gönderildi" : "Onaya gönderildi! ⏳");
     renderChild();
+    if(r.autoApproved){ showCelebrate(r.aiNote?r.aiNote.note:"Harika!", task.xp); }
+    else { toast("Onaya gönderildi! ⏳"); }
   }catch(e){
     if(btn){ btn.disabled=false; btn.textContent="Onaya Gönder"; }
     toast("Hata: "+e.message);
   }
+}
+/* AI ogrenmeyi begenmedi: modal icinde uyari, cocuk duzeltir */
+function showAiReject(note){
+  const modal=document.querySelector(".modal"); if(!modal) return;
+  let w=document.getElementById("aiReject");
+  if(!w){
+    w=document.createElement("div"); w.id="aiReject"; w.className="ai-note";
+    w.style.cssText="border-left-color:var(--red);background:#FFF0F0;color:#9A2020;margin-bottom:12px";
+    const acts=modal.querySelector(".modal-actions"); acts.parentNode.insertBefore(w, acts);
+  }
+  w.innerHTML="🤖 "+note+"<br><b style='display:block;margin-top:6px'>Bugün öğrendiğin YENİ bir şeyi yaz ve tekrar dene.</b>";
+}
+/* AI begendi: otomatik tamamlandi, kutlama */
+function showCelebrate(note, xp){
+  showModal(`
+    <div style="text-align:center;padding:6px 0">
+      <div style="font-size:56px;animation:bob 1.2s ease-in-out infinite">⭐</div>
+      <h3 style="margin:10px 0 2px">+${xp} Yıldız kazandın!</h3>
+      <div class="ai-note" style="text-align:left;margin:14px 0">🤖 ${note}</div>
+      <button class="btn-primary" style="width:100%" onclick="closeModal()">Süper! 🚀</button>
+    </div>
+  `);
 }
 
 /* ======================= APPROVER VIEW ======================= */

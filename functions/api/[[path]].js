@@ -136,24 +136,34 @@ export async function onRequest(context){
       if(!taskId) return bad("taskId gerekli");
       const id = "c_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
       const ts = Date.now();
-      // foto -> R2
+      // AI gorevi: ONCE degerlendir. Reddederse KAYDETME, cocuk duzeltsin.
+      let aiOk=null, aiNote=null;
+      const isAiTask = AI_TASKS.has(taskId);
+      if(isAiTask){
+        if(!proofText) return bad("Lütfen ne öğrendiğini yaz");
+        const ev = await aiEvaluate(env, proofText, me.age);
+        aiOk = ev.ok; aiNote = ev.note;
+        if(aiOk===0){
+          // AI reddetti -> kaydetme, anlik geri bildirim
+          return json({ rejected:true, aiNote:{ok:0, note:aiNote} });
+        }
+      }
+      // foto -> R2 (AI gecince ya da AI'siz gorevde)
       let photoKey = null;
       if(photoB64){
         photoKey = "proofs/"+me.id+"/"+id+".jpg";
         const bin = fromB64url(photoB64.replace(/^data:image\/\w+;base64,/, "").replace(/\+/g,"-").replace(/\//g,"_"));
         await env.PROOFS.put(photoKey, bin, {httpMetadata:{contentType:"image/jpeg"}});
       }
-      // AI on-degerlendirme
-      let aiOk=null, aiNote=null;
-      if(AI_TASKS.has(taskId) && proofText){
-        const ev = await aiEvaluate(env, proofText, me.age);
-        aiOk = ev.ok; aiNote = ev.note;
-      }
+      // AI gorevi gectiyse OTOMATIK onayli; diger gorevler ebeveyn onayina (pending)
+      const autoApprove = isAiTask && aiOk===1;
+      const status = autoApprove ? "approved" : "pending";
+      const approver = autoApprove ? "ai" : null;
       await env.DB.prepare(
         "INSERT INTO completions (id,user_id,task_id,date,week,ts,status,proof_text,proof_photo_key,ai_ok,ai_note,approver_id) "+
-        "VALUES (?,?,?,?,?,?,'pending',?,?,?,?,NULL)"
-      ).bind(id, me.id, taskId, date, week, ts, proofText||null, photoKey, aiOk, aiNote).run();
-      return json({ ok:true, id, aiNote: aiNote?{ok:aiOk,note:aiNote}:null });
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
+      ).bind(id, me.id, taskId, date, week, ts, status, proofText||null, photoKey, aiOk, aiNote, approver).run();
+      return json({ ok:true, id, autoApproved:autoApprove, aiNote: aiNote?{ok:aiOk,note:aiNote}:null });
     }
 
     /* --- onaylayici/admin: karar --- */
