@@ -4,7 +4,8 @@
 
 const enc = new TextEncoder();
 const AI_TASKS = new Set(["ogren"]);          // sohbetli AI gorevi
-const TOKEN_TTL = 1000*60*60*24*30;            // 30 gun
+const TOKEN_TTL = 1000*60*60*12;               // 12 saat (calinan token riskini sinirla)
+const MAX_PHOTO_CHARS = 750000;                // ~550KB base64 foto siniri (R2 kotuye kullanim)
 const AI_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const MAX_CHILD_TURNS = 4;                     // bu kadar mesajdan sonra AI karar vermek zorunda
 
@@ -194,6 +195,7 @@ export async function onRequest(context){
       const ts = Date.now();
       let photoKey = null;
       if(photoB64){
+        if(photoB64.length > MAX_PHOTO_CHARS) return bad("Fotoğraf çok büyük, daha küçük bir tane seç", 413);
         photoKey = "proofs/"+me.id+"/"+id+".jpg";
         const bin = fromB64url(photoB64.replace(/^data:image\/\w+;base64,/, "").replace(/\+/g,"-").replace(/\//g,"_"));
         await env.PROOFS.put(photoKey, bin, {httpMetadata:{contentType:"image/jpeg"}});

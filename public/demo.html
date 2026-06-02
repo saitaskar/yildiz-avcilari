@@ -72,6 +72,30 @@
   .bubble.me{background:var(--primary);color:#fff;border-bottom-right-radius:4px;margin-left:auto;}
   .bubble.win{background:linear-gradient(90deg,#2E7D32,#43A047);color:#fff;text-align:center;max-width:100%;font-weight:700;}
 
+  /* mockup ekranlar */
+  .screen{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;max-width:430px;margin:0 auto;}
+  .screen-title{font-size:14px;font-weight:800;}
+  .screen-sub{font-size:12px;color:var(--muted);margin-bottom:14px;}
+  .tk{display:flex;align-items:center;gap:11px;padding:11px;border:1px solid var(--line);border-radius:12px;margin-bottom:9px;}
+  .tk-ico{width:42px;height:42px;border-radius:10px;background:#2A2348;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+  .tk-b{flex:1;min-width:0;text-align:left;}
+  .tk-t{font-weight:700;font-size:14px;}
+  .tk-m{margin-top:3px;}
+  .tk-chip{display:inline-block;background:#3A2A14;color:#FFD166;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;margin-right:4px;}
+  .tk-chip.win{background:#1F3A1E;color:#7ED99B;}
+  .tk-btn{background:var(--primary);color:#fff;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;flex-shrink:0;}
+  .tk-done{color:#43A047;font-size:22px;flex-shrink:0;}
+  .ap{border:1px solid var(--line);border-radius:14px;padding:14px;text-align:left;}
+  .ap-h{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+  .ap-av{width:34px;height:34px;border-radius:50%;background:#2A2348;display:flex;align-items:center;justify-content:center;font-size:18px;}
+  .ap-proof{background:#241B3D;border-radius:10px;padding:9px 12px;font-size:13px;margin:8px 0;color:#C9BEEA;}
+  .ap-acts{display:flex;gap:8px;margin-top:10px;}
+  .ap-ok{flex:1;background:#2E7D32;color:#fff;border-radius:10px;padding:9px;text-align:center;font-weight:700;font-size:13px;}
+  .ap-no{flex:1;border:2px solid #C62828;color:#ff8a8a;border-radius:10px;padding:9px;text-align:center;font-weight:700;font-size:13px;}
+  .cine-mock{background:linear-gradient(160deg,#140C2E,#2A1055);border:1px solid var(--line);border-radius:24px;padding:30px 22px;text-align:center;}
+  .cine-badge{font-size:12px;letter-spacing:4px;color:#FFD166;font-weight:800;margin-bottom:14px;}
+  .cine-h{font-size:24px;font-weight:800;background:linear-gradient(90deg,#FFD166,#FF7A18);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:12px;line-height:1.3;}
+
   footer{text-align:center;padding:40px 20px 60px;color:var(--muted);border-top:1px solid var(--line);margin-top:20px;}
   footer a{color:var(--accent);text-decoration:none;font-weight:700;}
   .pill{display:inline-block;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--muted);margin:3px;}
@@ -92,7 +116,6 @@
   <p class="desc">Çocuklara oyunlaştırma ile iyi alışkanlık kazandıran, RPG temalı bir aile görev portalı. Görevleri tamamla, yıldız kazan, gizemli ödülü adım adım ortaya çıkar.</p>
   <div class="cta">
     <a class="btn" href="/">Giriş Yap</a>
-    <a class="btn-ghost" href="https://github.com/saitaskar/yildiz-avcilari" target="_blank">GitHub</a>
   </div>
 </div>
 
@@ -141,6 +164,18 @@
 </div>
 
 <div class="section wrap">
+  <div class="lead">İlk Giriş</div>
+  <div class="h2">Maceraya başlangıç</div>
+  <p class="sub">Çocuk ilk girişte sinematik bir karşılama görür, bir sınıf seçer ve kılavuz bot sistemi oyun gibi anlatır.</p>
+  <div class="cine-mock">
+    <div class="cine-badge">BÜYÜK KARNE SEZONU</div>
+    <div class="cine-h">Hedefe giden yolda<br>kaderini seç...</div>
+    <div style="color:#C9BEEA;font-size:14px;line-height:1.55">Görevleri tamamla, gücünü topla, ödülü hak et.</div>
+    <div style="margin-top:18px;font-size:12.5px;color:var(--muted)">① Sınıf seç → ② Kılavuz bot tanıtır → ③ Maceraya başla</div>
+  </div>
+</div>
+
+<div class="section wrap">
   <div class="lead">Üç Dünya</div>
   <div class="h2">Çocuk kendi temasını seçer</div>
   <p class="sub">İlk girişte bir sınıf seçilir; tüm arayüz, renkler, görev isimleri ve kılavuz bot o dünyaya bürünür.</p>
@@ -156,6 +191,35 @@
     <div class="theme t-pixel">
       <div><div class="ico">🧱</div><div class="cls">Usta</div><div class="nm">Piksel Evreni</div></div>
       <div class="ex">"Spawn Noktasını Düzenle" · Kılavuz: Bit 🤖</div>
+    </div>
+  </div>
+</div>
+
+<div class="section wrap">
+  <div class="lead">Çocuğun Ekranı</div>
+  <div class="h2">Bir günün görevleri</div>
+  <p class="sub">Zamanı gelen görevler aktif olur; görev temaya göre isim alır (örnek: Galaktik Kaşif).</p>
+  <div class="screen">
+    <div class="screen-title">🦁 Demir · Kaptan</div>
+    <div class="screen-sub">Bugünün seferleri</div>
+    <div class="tk"><div class="tk-ico">🛏️</div><div class="tk-b"><div class="tk-t">Yer Çekimi Kalkanları</div><div class="tk-m"><span class="tk-chip">+15 ⭐</span><span class="tk-chip">🕐 07-11</span></div></div><div class="tk-btn">Yaptım</div></div>
+    <div class="tk"><div class="tk-ico">🦷</div><div class="tk-b"><div class="tk-t">Sonik Kalkan · şafak</div><div class="tk-m"><span class="tk-chip win">✓ Tamamlandı</span></div></div><div class="tk-done">✅</div></div>
+    <div class="tk"><div class="tk-ico">💧</div><div class="tk-b"><div class="tk-t">Soğutma Sıvısı <span style="color:var(--muted);font-weight:400">2/3</span></div><div class="tk-m"><span class="tk-chip">+5 ⭐</span><span class="tk-chip">🕐 gün boyu</span></div></div><div class="tk-btn">Yaptım</div></div>
+    <div class="tk"><div class="tk-ico">🧠</div><div class="tk-b"><div class="tk-t">Keşif Raporu</div><div class="tk-m"><span class="tk-chip">+100 ⭐</span><span class="tk-chip">haftalık · sohbet</span></div></div><div class="tk-btn">Başla</div></div>
+  </div>
+</div>
+
+<div class="section wrap">
+  <div class="lead">Ailenin Ekranı</div>
+  <div class="h2">Tek dokunuşla onay</div>
+  <p class="sub">Çocuk kanıtı gönderir; anne, baba ya da teyze onaylar, yıldız havuza düşer. (Öğrenme sohbeti otomatik onaylanır.)</p>
+  <div class="screen">
+    <div class="screen-title">Onay bekleyenler</div>
+    <div class="screen-sub">Elif (Anne) · Demir ve Kuzey için</div>
+    <div class="ap">
+      <div class="ap-h"><div class="ap-av">🦁</div><div><b style="font-size:14px">Demir</b> · 🛏️ Yatağını topla<div style="font-size:11px;color:var(--muted)">08:42 · +15 ⭐</div></div></div>
+      <div class="ap-proof">📷 Fotoğraf eklendi</div>
+      <div class="ap-acts"><div class="ap-no">✕ Reddet</div><div class="ap-ok">✓ Onayla</div></div>
     </div>
   </div>
 </div>
@@ -192,7 +256,7 @@
 <footer>
   <div style="font-size:30px">🌟</div>
   <p style="margin:10px 0">Yıldız Avcıları — sevgiyle, çocuklara iyi alışkanlıklar için.</p>
-  <p><a href="/">Giriş Yap</a> · <a href="https://github.com/saitaskar/yildiz-avcilari" target="_blank">Kaynak Kodu (GitHub)</a></p>
+  <p><a href="/">Giriş Yap</a></p>
 </footer>
 
 <script>
