@@ -48,3 +48,27 @@ CREATE TABLE completions (
 CREATE INDEX idx_comp_user   ON completions(user_id);
 CREATE INDEX idx_comp_status ON completions(status);
 CREATE INDEX idx_comp_week   ON completions(user_id, week);
+
+-- Ebeveynin cocuga ozel tanimladigi gorevler (kod katalogu disi)
+CREATE TABLE custom_tasks (
+  id         TEXT PRIMARY KEY,
+  child_id   TEXT NOT NULL,
+  created_by TEXT NOT NULL,        -- ekleyen ebeveyn/admin
+  title      TEXT NOT NULL,
+  emoji      TEXT DEFAULT '⭐',
+  xp         INTEGER NOT NULL DEFAULT 10,
+  status     TEXT NOT NULL DEFAULT 'active',  -- active | done | cancelled
+  ts         INTEGER NOT NULL
+);
+CREATE INDEX idx_custom_child ON custom_tasks(child_id, status);
+
+-- Kazanilan hediye/odul kayitlari (metrics + log)
+CREATE TABLE rewards_log (
+  id         TEXT PRIMARY KEY,
+  user_id    TEXT NOT NULL,
+  season_id  TEXT,
+  prize      TEXT,
+  xp_at_win  INTEGER,
+  ts         INTEGER NOT NULL
+);
+CREATE INDEX idx_rewards_user ON rewards_log(user_id);

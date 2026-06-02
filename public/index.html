@@ -215,6 +215,10 @@
   .chat-input-row input{flex:1;border:2px solid var(--line);border-radius:12px;padding:12px;min-width:0;}
   .chat-input-row input:focus{outline:none;border-color:var(--primary);}
   .chat-input-row input:disabled{background:#F4F1FB;}
+
+  /* emoji secici (ekstra gorev) */
+  .emoji-pick{font-size:22px;background:#fff;border:2px solid var(--line);border-radius:12px;width:46px;height:46px;cursor:pointer;line-height:1;}
+  .emoji-pick.sel{border-color:var(--primary);background:#F3ECFF;}
 </style>
 </head>
 <body>
@@ -453,7 +457,7 @@ const PRIZE_LABEL = {switch:"Nintendo Switch Lite 🎉"};
 const API = "/api";
 let authToken = null;     // login sonrasi HMAC token (bellekte; her acilista login)
 let loginUsers = [];      // login ekrani icin (PIN'siz isim listesi)
-let state = {season:null, users:[], completions:[]};
+let state = {season:null, users:[], completions:[], customTasks:[]};
 let session = null;       // current user object
 let pinDraft = "";
 let pinTarget = null;     // user being authenticated
@@ -471,7 +475,7 @@ async function api(path, opts={}){
 }
 async function refreshState(){
   const d = await api("/state");
-  state = { season:d.season, users:d.users, completions:d.completions };
+  state = { season:d.season, users:d.users, completions:d.completions, customTasks:d.customTasks||[] };
   const me = d.users.find(u=>u.id===session.id); if(me) session = me;  // tema vb. guncel
 }
 function user(id){ return state.users.find(u=>u.id===id); }
@@ -514,18 +518,27 @@ function compsFor(userId, taskId, period){
     return true;
   });
 }
+/* ozel gorevi normal gorev objesine cevir (taskRow ile uyumlu) */
+function customAsTask(c){
+  return { id:c.id, emoji:c.emoji||"⭐", title:c.title, sub:"⭐ Aileden özel görev",
+    type:"once", xp:c.xp, target:1, win:[0,24], proof:"none", cat:"Özel", custom:true };
+}
+function taskPeriod(task){ return task.custom ? "all" : (task.type==="weekly" ? "week" : "day"); }
 function doneCount(userId, task){
-  const period = task.type==="weekly" ? "week" : "day";
-  return compsFor(userId, task.id, period).filter(c=>c.status!=="rejected").length;
+  return compsFor(userId, task.id, taskPeriod(task)).filter(c=>c.status!=="rejected").length;
 }
 function approvedCount(userId, task){
   const period = task.type==="weekly" ? "week" : "day";
   return compsFor(userId, task.id, period).filter(c=>c.status==="approved").length;
 }
+function xpForTask(taskId){
+  const t=TASKS.find(x=>x.id===taskId); if(t) return t.xp;
+  const c=(state.customTasks||[]).find(x=>x.id===taskId); return c?c.xp:0;
+}
 function userXP(userId){
   return state.completions
     .filter(c=>c.userId===userId && c.status==="approved")
-    .reduce((s,c)=>{ const t=TASKS.find(x=>x.id===c.taskId); return s+(t?t.xp:0); },0);
+    .reduce((s,c)=> s + xpForTask(c.taskId), 0);
 }
 function pendingForApprover(appr){
   return state.completions
@@ -563,7 +576,7 @@ async function quickLogin(id){
   try{
     const d = await api("/state");          // token gecerliyse me doner
     session = d.me;
-    state = { season:d.season, users:d.users, completions:d.completions };
+    state = { season:d.season, users:d.users, completions:d.completions, customTasks:d.customTasks||[] };
     saveToken(id, authToken);               // suresini tazele
     enterApp();
   }catch(e){
@@ -761,7 +774,9 @@ function renderChildContent(){
   if(childTab==="board"){ c.innerHTML = leaderboardHTML(); return; }
   const list = TASKS.filter(t=> childTab==="week" ? t.type==="weekly" : t.type==="daily");
   if(childTab==="today"){
-    c.innerHTML = `<div class="card"><h2>Bugünün görevleri</h2><div class="sub">Zamanı gelen görevleri yap, kanıtını gönder.</div>${list.map(taskRow).join("")}</div>`;
+    const mine = (state.customTasks||[]).filter(c=>c.childId===session.id && c.status==="active").map(customAsTask);
+    const customHTML = mine.length ? `<div class="sub" style="margin-top:14px;color:var(--accent);font-weight:700">⭐ Aileden özel görevler</div>${mine.map(taskRow).join("")}` : "";
+    c.innerHTML = `<div class="card"><h2>Bugünün görevleri</h2><div class="sub">Zamanı gelen görevleri yap, kanıtını gönder.</div>${list.map(taskRow).join("")}${customHTML}</div>`;
   }else{
     c.innerHTML = `<div class="card"><h2>Haftalık ana görev</h2><div class="sub">Haftada bir, en değerli görev. Akıllı yardımcı değerlendirir.</div>${list.map(taskRow).join("")}</div>`;
   }
@@ -769,7 +784,7 @@ function renderChildContent(){
 function taskRow(task){
   const done = doneCount(session.id, task);
   const full = done>=task.target;
-  const pendingN = compsFor(session.id, task.id, task.type==="weekly"?"week":"day").filter(c=>c.status==="pending").length;
+  const pendingN = compsFor(session.id, task.id, taskPeriod(task)).filter(c=>c.status==="pending").length;
   const active = inWindow(task);
   const locked = !active && !full;
   let cls="task", actionHTML="";
@@ -829,8 +844,14 @@ function leaderboardHTML(){
 
 /* ---- "Yaptım" modal ---- */
 let pendingPhoto = null;
+function taskById(taskId){
+  let t = TASKS.find(x=>x.id===taskId);
+  if(t) return t;
+  const c=(state.customTasks||[]).find(x=>x.id===taskId); return c?customAsTask(c):null;
+}
 function openDo(taskId){
-  const task = TASKS.find(t=>t.id===taskId);
+  const task = taskById(taskId);
+  if(!task) return;
   if(task.ai){ openLearnChat(task); return; }   // ogrenme gorevi = sohbet
   pendingPhoto = null;
   const variant = tv(task, session.age);
@@ -880,7 +901,7 @@ function pickPhoto(e){
   reader.readAsDataURL(file);
 }
 async function submitDo(taskId){
-  const task=TASKS.find(t=>t.id===taskId);
+  const task=taskById(taskId);
   const txtEl=document.getElementById("proofText");
   const txt = txtEl?txtEl.value.trim():"";
   if(task.proof==="text" && txt.length<3){ toast("Lütfen birkaç cümle yaz"); return; }
@@ -1020,13 +1041,66 @@ function renderApprover(){
     </div>
     <div class="card">
       <h2>Ekstra görev ver</h2>
-      <div class="sub">Çocuğa özel küçük bir görev tanımla (prototipte yakında).</div>
-      <button class="btn-primary" style="width:100%" onclick="toast('Faz 2de aktif olacak')">+ Ekstra görev ekle</button>
+      <div class="sub">Çocuğa özel bir görev tanımla; çocuk yapınca sana onaya gelir.</div>
+      ${activeCustomFor(session.kids)}
+      <button class="btn-primary" style="width:100%;margin-top:6px" onclick="openCustomTaskForm()">➕ Yeni ekstra görev</button>
     </div>
   `;
 }
+function activeCustomFor(kidIds){
+  const list=(state.customTasks||[]).filter(c=>kidIds.includes(c.childId) && c.status==="active");
+  if(!list.length) return "";
+  return list.map(c=>{
+    const ch=user(c.childId);
+    return `<div class="task" style="margin-bottom:8px">
+      <div class="t-ico">${c.emoji}</div>
+      <div class="t-body"><div class="t-title">${c.title}</div>
+        <div class="t-meta"><span class="chip xp">+${c.xp} ⭐</span><span class="chip">${ch?ch.name:''}</span></div></div>
+      <button class="btn-do" style="background:#fff;border:2px solid var(--red);color:var(--red)" onclick="cancelCustomTask('${c.id}')">İptal</button>
+    </div>`;
+  }).join("");
+}
+let ctEmoji = "⭐";
+function openCustomTaskForm(){
+  const kids = session.kids.map(k=>{const u=user(k); return `<option value="${k}">${u?u.name:k}</option>`;}).join("");
+  const emojis=["⭐","🧹","📖","🎨","🏃","🧺","🐕","🌱","🎹","🧮","🪥","🛏️"];
+  ctEmoji="⭐";
+  showModal(`
+    <h3>➕ Ekstra görev ver</h3>
+    <div class="msub">Çocuğa özel, tek seferlik bir görev</div>
+    <div class="field"><label>Kime?</label><select id="ctChild" style="width:100%;border:2px solid var(--line);border-radius:12px;padding:12px">${kids}</select></div>
+    <div class="field"><label>Görev</label><input type="text" id="ctTitle" placeholder="Örn: Oyuncaklarını topla" maxlength="60"></div>
+    <div class="field"><label>İkon</label><div id="ctEmojis" style="display:flex;flex-wrap:wrap;gap:6px">${emojis.map((e,i)=>`<button type="button" class="emoji-pick${i===0?' sel':''}" onclick="pickEmoji(this,'${e}')">${e}</button>`).join("")}</div></div>
+    <div class="field"><label>Kaç yıldız?</label><input type="number" id="ctXp" value="15" min="1" max="200"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal()">Vazgeç</button>
+      <button class="btn-primary" onclick="submitCustomTask()">Görevi Ver</button>
+    </div>
+  `);
+}
+function pickEmoji(btn, e){
+  ctEmoji=e;
+  document.querySelectorAll(".emoji-pick").forEach(b=>b.classList.remove("sel"));
+  btn.classList.add("sel");
+}
+async function submitCustomTask(){
+  const childId=document.getElementById("ctChild").value;
+  const title=document.getElementById("ctTitle").value.trim();
+  const xp=parseInt(document.getElementById("ctXp").value)||15;
+  if(title.length<2){ toast("Görev adı yaz"); return; }
+  const btn=document.querySelector(".modal .btn-primary"); if(btn){btn.disabled=true;btn.textContent="Ekleniyor...";}
+  try{
+    await api("/custom-task", {method:"POST", body:{childId, title, emoji:ctEmoji, xp}});
+    closeModal(); await refreshState(); toast("Görev verildi ✓"); renderApprover();
+  }catch(e){ if(btn){btn.disabled=false;btn.textContent="Görevi Ver";} toast("Hata: "+e.message); }
+}
+async function cancelCustomTask(id){
+  if(!confirm("Bu özel görev iptal edilsin mi?")) return;
+  try{ await api("/custom-cancel",{method:"POST",body:{id}}); await refreshState(); toast("İptal edildi"); renderApprover(); }
+  catch(e){ toast("Hata: "+e.message); }
+}
 function approveCard(c){
-  const child=user(c.userId); const task=TASKS.find(t=>t.id===c.taskId);
+  const child=user(c.userId); const task=taskById(c.taskId) || {emoji:"⭐",title:"Görev",xp:0};
   let proofHTML="";
   if(c.proof.text) proofHTML+=`<div class="proof-box">"${c.proof.text}"</div>`;
   if(c.proof.photoKey) proofHTML+=`<div class="proof-box">📷 Fotoğraf:<img src="/api/proof/${c.proof.photoKey}?t=${encodeURIComponent(authToken)}" loading="lazy"></div>`;

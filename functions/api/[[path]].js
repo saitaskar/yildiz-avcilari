@@ -137,7 +137,9 @@ async function getState(env, me){
     status:c.status, proof:{text:c.proof_text||"", photoKey:c.proof_photo_key||null},
     aiNote: c.ai_note?{ok:c.ai_ok, note:c.ai_note}:null, approverId:c.approver_id
   }));
-  return { season, users, completions, me: safeUser(me) };
+  const ctRs = await env.DB.prepare("SELECT * FROM custom_tasks WHERE status IN ('active','done')").all();
+  const customTasks = (ctRs.results||[]).map(c=>({ id:c.id, childId:c.child_id, title:c.title, emoji:c.emoji, xp:c.xp, by:c.created_by, status:c.status }));
+  return { season, users, completions, customTasks, me: safeUser(me) };
 }
 
 /* ====================== ROUTER ====================== */
@@ -247,6 +249,39 @@ export async function onRequest(context){
       }
       await env.DB.prepare("UPDATE completions SET status=?, approver_id=? WHERE id=?")
         .bind(decision, me.id, compId).run();
+      // ozel gorev onaylaninca tamamlandi (listeden kalksin)
+      if(decision==="approved" && String(comp.task_id).startsWith("ct_")){
+        await env.DB.prepare("UPDATE custom_tasks SET status='done' WHERE id=?").bind(comp.task_id).run();
+      }
+      return json({ ok:true });
+    }
+
+    /* --- ebeveyn/admin: cocuga ozel gorev ekle --- */
+    if(route==="custom-task" && method==="POST"){
+      if(me.role!=="approver" && me.role!=="admin") return bad("Yetkisiz", 403);
+      const { childId, title, emoji, xp } = body;
+      if(!childId || !title || !String(title).trim()) return bad("Çocuk ve görev adı gerekli");
+      if(me.role==="approver"){
+        const kids = me.kids?JSON.parse(me.kids):[];
+        if(!kids.includes(childId)) return bad("Bu çocuk sizin değil", 403);
+      }
+      const id = "ct_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
+      const x = Math.max(1, Math.min(200, parseInt(xp)||10));
+      await env.DB.prepare("INSERT INTO custom_tasks (id,child_id,created_by,title,emoji,xp,status,ts) VALUES (?,?,?,?,?,?,'active',?)")
+        .bind(id, childId, me.id, String(title).trim().slice(0,60), (emoji||"⭐").slice(0,4), x, Date.now()).run();
+      return json({ ok:true, id });
+    }
+
+    /* --- ebeveyn/admin: ozel gorevi iptal et --- */
+    if(route==="custom-cancel" && method==="POST"){
+      if(me.role!=="approver" && me.role!=="admin") return bad("Yetkisiz", 403);
+      const ct = await env.DB.prepare("SELECT * FROM custom_tasks WHERE id=?").bind(body.id).first();
+      if(!ct) return bad("Görev yok", 404);
+      if(me.role==="approver"){
+        const kids = me.kids?JSON.parse(me.kids):[];
+        if(!kids.includes(ct.child_id)) return bad("Yetkisiz", 403);
+      }
+      await env.DB.prepare("UPDATE custom_tasks SET status='cancelled' WHERE id=?").bind(body.id).run();
       return json({ ok:true });
     }
 
