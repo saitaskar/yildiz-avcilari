@@ -155,12 +155,24 @@ export async function onRequest(context){
       return json({ users: rs.results||[] });
     }
 
-    /* --- login: PIN dogrulama --- */
+    /* --- login: PIN dogrulama + brute-force korumasi --- */
     if(route==="login" && method==="POST"){
       const { userId, pin } = body;
       const u = await env.DB.prepare("SELECT * FROM users WHERE id=?").bind(userId).first();
-      if(!u || String(u.pin)!==String(pin)) return bad("PIN hatalı", 401);
-      const token = await signToken({uid:u.id, role:u.role, exp:Date.now()+TOKEN_TTL}, env.SESSION_SECRET||"dev-secret-change-me");
+      if(!u) return bad("PIN hatalı", 401);
+      const now = Date.now();
+      if(u.lock_until && u.lock_until > now){
+        const sec = Math.ceil((u.lock_until - now)/1000);
+        return bad("Çok fazla deneme. "+sec+" saniye sonra tekrar dene.", 429);
+      }
+      if(String(u.pin) !== String(pin)){
+        const fc = (u.fail_count||0) + 1;
+        if(fc >= 5) await env.DB.prepare("UPDATE users SET fail_count=0, lock_until=? WHERE id=?").bind(now+5*60*1000, userId).run();
+        else        await env.DB.prepare("UPDATE users SET fail_count=? WHERE id=?").bind(fc, userId).run();
+        return bad("PIN hatalı", 401);
+      }
+      if(u.fail_count || u.lock_until) await env.DB.prepare("UPDATE users SET fail_count=0, lock_until=0 WHERE id=?").bind(userId).run();
+      const token = await signToken({uid:u.id, role:u.role, exp:now+TOKEN_TTL}, env.SESSION_SECRET||"dev-secret-change-me");
       return json({ token, user: safeUser(u) });
     }
 

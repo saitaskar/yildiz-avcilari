@@ -476,6 +476,20 @@ async function refreshState(){
 }
 function user(id){ return state.users.find(u=>u.id===id); }
 
+/* ---- oturum kaliciligi: 5 dk, ortak PC dostu (her cocuk kendi token'i) ---- */
+const TOKEN_STORE = "gp_tokens";
+const TOKEN_LIFE = 5*60*1000;   // 5 dakika
+function saveToken(id, token){
+  try{ const a=JSON.parse(localStorage.getItem(TOKEN_STORE)||"{}"); a[id]={token, exp:Date.now()+TOKEN_LIFE}; localStorage.setItem(TOKEN_STORE, JSON.stringify(a)); }catch(e){}
+}
+function getSavedToken(id){
+  try{ const a=JSON.parse(localStorage.getItem(TOKEN_STORE)||"{}"); const t=a[id]; if(t && t.exp>Date.now()) return t.token; }catch(e){}
+  return null;
+}
+function clearSavedToken(id){
+  try{ const a=JSON.parse(localStorage.getItem(TOKEN_STORE)||"{}"); delete a[id]; localStorage.setItem(TOKEN_STORE, JSON.stringify(a)); }catch(e){}
+}
+
 /* ======================= HELPERS ======================= */
 function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function nowHour(){ return new Date().getHours() + new Date().getMinutes()/60; }
@@ -540,7 +554,23 @@ function renderLogin(){
     renderKeypad();
   }
 }
-function pickUser(id){ pinTarget=loginUsers.find(u=>u.id===id); pinDraft=""; document.getElementById("pinErr").textContent=""; renderLogin(); }
+function pickUser(id){
+  const saved = getSavedToken(id);
+  if(saved){ authToken=saved; quickLogin(id); return; }   // 5 dk icinde tekrar: PIN'siz
+  pinTarget=loginUsers.find(u=>u.id===id); pinDraft=""; document.getElementById("pinErr").textContent=""; renderLogin();
+}
+async function quickLogin(id){
+  try{
+    const d = await api("/state");          // token gecerliyse me doner
+    session = d.me;
+    state = { season:d.season, users:d.users, completions:d.completions };
+    saveToken(id, authToken);               // suresini tazele
+    enterApp();
+  }catch(e){
+    clearSavedToken(id); authToken=null;    // token bozuk/eski: PIN'e dus
+    pinTarget=loginUsers.find(u=>u.id===id); pinDraft=""; renderLogin();
+  }
+}
 function renderPin(){
   const dots = document.getElementById("pinDots");
   dots.innerHTML = [0,1,2,3].map(i=>`<div class="pin-dot ${i<pinDraft.length?'filled':''}"></div>`).join("");
@@ -567,6 +597,7 @@ async function tryLogin(){
   try{
     const d = await api("/login", {method:"POST", body:{userId:pinTarget.id, pin:pinDraft}});
     authToken = d.token; session = d.user; pinDraft="";
+    saveToken(d.user.id, d.token);   // 5 dk PIN'siz tekrar girise izin
     err.textContent="";
     await refreshState();
     enterApp();
@@ -587,7 +618,7 @@ function enterApp(){
   renderApp();
   startAutoRefresh();
 }
-function logout(){ stopAutoRefresh(); resetTheme(); session=null; authToken=null; pinTarget=null; pinDraft=""; document.getElementById("wizardMount").innerHTML=""; document.getElementById("appBody").innerHTML=""; document.getElementById("appView").classList.add("hidden"); document.getElementById("loginView").classList.remove("hidden"); renderLogin(); }
+function logout(){ stopAutoRefresh(); if(session) clearSavedToken(session.id); resetTheme(); session=null; authToken=null; pinTarget=null; pinDraft=""; document.getElementById("wizardMount").innerHTML=""; document.getElementById("appBody").innerHTML=""; document.getElementById("appView").classList.add("hidden"); document.getElementById("loginView").classList.remove("hidden"); renderLogin(); }
 
 /* ---- oto-yenileme: 90 sn'de bir, modal/sihirbaz aciksa dokunma ---- */
 let refreshTimer = null;

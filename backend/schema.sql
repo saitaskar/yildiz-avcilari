@@ -24,7 +24,9 @@ CREATE TABLE users (
   title    TEXT,                  -- approver/admin: Anne/Baba/Teyze/Dayi
   theme    TEXT,                  -- child secilen RPG temasi (scifi|fantasy|pixel)
   parents  TEXT,                  -- JSON array<approver_id> (child)
-  kids     TEXT                   -- JSON array<child_id> (approver/admin)
+  kids     TEXT,                  -- JSON array<child_id> (approver/admin)
+  fail_count INTEGER DEFAULT 0,   -- ardisik yanlis PIN (brute-force korumasi)
+  lock_until INTEGER DEFAULT 0    -- bu zamana kadar kilitli (epoch ms)
 );
 
 CREATE TABLE completions (
