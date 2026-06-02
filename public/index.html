@@ -438,23 +438,31 @@ const SEED = {
 /* ---- Prize gizli isim (siluet açılınca görünür) ---- */
 const PRIZE_LABEL = {switch:"Nintendo Switch Lite 🎉"};
 
-/* ======================= STATE ======================= */
-let state = load();
+/* ======================= STATE + API ======================= */
+const API = "/api";
+let authToken = null;     // login sonrasi HMAC token (bellekte; her acilista login)
+let loginUsers = [];      // login ekrani icin (PIN'siz isim listesi)
+let state = {season:null, users:[], completions:[]};
 let session = null;       // current user object
 let pinDraft = "";
 let pinTarget = null;     // user being authenticated
 let loginRole = "child";
 
-function load(){
-  const fresh = JSON.parse(JSON.stringify(SEED));
-  try{
-    const raw = localStorage.getItem(STORE_KEY);
-    if(raw) return JSON.parse(raw);
-    localStorage.setItem(STORE_KEY, JSON.stringify(fresh));
-  }catch(e){ /* localStorage yoksa (gizli mod/file://) bellekte calis */ }
-  return fresh;
+async function api(path, opts={}){
+  const headers = Object.assign({}, opts.headers||{});
+  if(authToken) headers["Authorization"] = "Bearer "+authToken;
+  if(opts.body) headers["content-type"] = "application/json";
+  const r = await fetch(API+path, {method:opts.method||"GET", headers,
+    body: opts.body?JSON.stringify(opts.body):undefined});
+  const data = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(data.error || ("HTTP "+r.status));
+  return data;
 }
-function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
+async function refreshState(){
+  const d = await api("/state");
+  state = { season:d.season, users:d.users, completions:d.completions };
+  const me = d.users.find(u=>u.id===session.id); if(me) session = me;  // tema vb. guncel
+}
 function user(id){ return state.users.find(u=>u.id===id); }
 
 /* ======================= HELPERS ======================= */
@@ -508,7 +516,7 @@ function renderLogin(){
     b.onclick = ()=>{ loginRole=b.dataset.role; pinTarget=null; renderLogin(); };
   });
   const list = document.getElementById("nameList");
-  const people = state.users.filter(u=>u.role===loginRole);
+  const people = loginUsers.filter(u=>u.role===loginRole);
   list.innerHTML = people.map(u=>`
     <div class="name-item ${pinTarget&&pinTarget.id===u.id?'active':''}" onclick="pickUser('${u.id}')">
       <div class="av">${u.av}</div>
@@ -521,7 +529,7 @@ function renderLogin(){
     renderKeypad();
   }
 }
-function pickUser(id){ pinTarget=user(id); pinDraft=""; document.getElementById("pinErr").textContent=""; renderLogin(); }
+function pickUser(id){ pinTarget=loginUsers.find(u=>u.id===id); pinDraft=""; document.getElementById("pinErr").textContent=""; renderLogin(); }
 function renderPin(){
   const dots = document.getElementById("pinDots");
   dots.innerHTML = [0,1,2,3].map(i=>`<div class="pin-dot ${i<pinDraft.length?'filled':''}"></div>`).join("");
@@ -541,10 +549,19 @@ function pinKey(k){
   if(k==="ok"){ tryLogin(); return; }
   if(pinDraft.length<4){ pinDraft+=k; renderPin(); if(pinDraft.length===4) setTimeout(tryLogin,150); }
 }
-function tryLogin(){
+async function tryLogin(){
   if(!pinTarget) return;
-  if(pinDraft===pinTarget.pin){ session=pinTarget; pinDraft=""; enterApp(); }
-  else{ document.getElementById("pinErr").textContent="Yanlış PIN, tekrar dene"; pinDraft=""; renderPin(); }
+  const err=document.getElementById("pinErr");
+  err.textContent="Kontrol ediliyor...";
+  try{
+    const d = await api("/login", {method:"POST", body:{userId:pinTarget.id, pin:pinDraft}});
+    authToken = d.token; session = d.user; pinDraft="";
+    err.textContent="";
+    await refreshState();
+    enterApp();
+  }catch(e){
+    document.getElementById("pinErr").textContent="Yanlış PIN, tekrar dene"; pinDraft=""; renderPin();
+  }
 }
 
 /* ======================= APP SHELL ======================= */
@@ -558,7 +575,7 @@ function enterApp(){
   if(session.role==="child") applyTheme(themeOf(session)); else resetTheme();
   renderApp();
 }
-function logout(){ resetTheme(); session=null; pinTarget=null; pinDraft=""; document.getElementById("wizardMount").innerHTML=""; document.getElementById("appBody").innerHTML=""; document.getElementById("appView").classList.add("hidden"); document.getElementById("loginView").classList.remove("hidden"); renderLogin(); }
+function logout(){ resetTheme(); session=null; authToken=null; pinTarget=null; pinDraft=""; document.getElementById("wizardMount").innerHTML=""; document.getElementById("appBody").innerHTML=""; document.getElementById("appView").classList.add("hidden"); document.getElementById("loginView").classList.remove("hidden"); renderLogin(); }
 
 /* ======================= RPG ONBOARDING WIZARD ======================= */
 let wizPickedTheme=null, wizStep=0;
@@ -613,11 +630,11 @@ function wizTutorial(){
 }
 function wizNext(){ wizStep++; wizTutorial(); }
 function wizBack(){ wizStep--; wizTutorial(); }
-function wizFinish(){
+async function wizFinish(){
   session.theme=wizPickedTheme;
-  const u=user(session.id); if(u) u.theme=wizPickedTheme;  // kalici kaydet
-  save();
+  try{ await api("/theme", {method:"POST", body:{theme:wizPickedTheme}}); }catch(e){ toast("Tema kaydedilemedi"); }
   document.getElementById("wizardMount").innerHTML="";
+  await refreshState();
   enterApp();
 }
 /* cocuk sonradan tema degistirir */
@@ -797,36 +814,26 @@ function pickPhoto(e){
   };
   reader.readAsDataURL(file);
 }
-function submitDo(taskId){
+async function submitDo(taskId){
   const task=TASKS.find(t=>t.id===taskId);
   const txtEl=document.getElementById("proofText");
   const txt = txtEl?txtEl.value.trim():"";
   if(task.proof==="text" && txt.length<3){ toast("Lütfen birkaç cümle yaz"); return; }
-  const proof = {type:task.proof, text:txt, photo:pendingPhoto};
-  let aiNote=null;
-  if(task.ai){
-    aiNote = fakeAIEval(txt, session.age);  // prototipte sahte; Faz 2'de Claude API (yas prompt'a gider)
+  const btn = document.querySelector(".modal .btn-primary");
+  if(btn){ btn.disabled=true; btn.textContent="Gönderiliyor..."; }
+  try{
+    const r = await api("/completion", {method:"POST", body:{
+      taskId:task.id, date:todayStr(), week:weekKey(),
+      proofText:txt, photoB64:pendingPhoto
+    }});
+    closeModal();
+    await refreshState();
+    toast(r.aiNote ? "Yardımcı okudu ✓ Onaya gönderildi" : "Onaya gönderildi! ⏳");
+    renderChild();
+  }catch(e){
+    if(btn){ btn.disabled=false; btn.textContent="Onaya Gönder"; }
+    toast("Hata: "+e.message);
   }
-  const comp = {
-    id:"c"+Date.now()+Math.floor(Math.random()*999),
-    userId:session.id, taskId:task.id, date:todayStr(), week:weekKey(),
-    ts:Date.now(), status:"pending", proof, aiNote, approverId:null
-  };
-  state.completions.push(comp);
-  save();
-  closeModal();
-  toast(aiNote ? "Yardımcı okudu ✓ Onaya gönderildi" : "Onaya gönderildi! ⏳");
-  renderChild();
-}
-/* Prototip sahte AI - Faz 2'de Claude API ile degisecek.
-   Gercek prompt: "Bu metin {age} yasinda bir cocugun KENDI cumleleri mi?
-   Anlamli, ogrenilmis bir bilgi iceriyor mu? Kopyala-yapistir mi?" + tesvik edici yorum. */
-function fakeAIEval(txt, age){
-  const words = txt.split(/\s+/).filter(Boolean).length;
-  const min = age>=13 ? 15 : 8;   // 13 yastan daha fazla detay beklenir
-  if(words>=min) return {ok:true, score:5, note:"Güzel ve kendi cümleleriyle anlatmış. Gerçekten yeni bir şey öğrenmiş 👏"};
-  if(words>=Math.ceil(min/2)) return {ok:true, score:4, note:"Anlamlı görünüyor, biraz daha detay güzel olurdu."};
-  return {ok:false, score:2, note:"Çok kısa, öğrenilen şey net değil. Onaylarken bir kontrol edin."};
 }
 
 /* ======================= APPROVER VIEW ======================= */
@@ -854,8 +861,8 @@ function approveCard(c){
   const child=user(c.userId); const task=TASKS.find(t=>t.id===c.taskId);
   let proofHTML="";
   if(c.proof.text) proofHTML+=`<div class="proof-box">"${c.proof.text}"</div>`;
-  if(c.proof.photo) proofHTML+=`<div class="proof-box">📷 Fotoğraf:<img src="${c.proof.photo}"></div>`;
-  if(!c.proof.text && !c.proof.photo) proofHTML=`<div class="proof-box" style="color:var(--muted)">Kanıt yok, çocuk yaptığını bildirdi.</div>`;
+  if(c.proof.photoKey) proofHTML+=`<div class="proof-box">📷 Fotoğraf:<img src="/api/proof/${c.proof.photoKey}?t=${encodeURIComponent(authToken)}" loading="lazy"></div>`;
+  if(!c.proof.text && !c.proof.photoKey) proofHTML=`<div class="proof-box" style="color:var(--muted)">Kanıt yok, çocuk yaptığını bildirdi.</div>`;
   let aiHTML="";
   if(c.aiNote) aiHTML=`<div class="ai-note">🤖 Akıllı yardımcı: ${c.aiNote.note} ${c.aiNote.ok?'✓':'⚠️'}</div>`;
   const when=new Date(c.ts).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"});
@@ -882,13 +889,13 @@ function kidStatusRow(kid){
     <div class="lb-xp">${xp}<br><small style="color:var(--muted);font-weight:500">%${pct}</small></div>
   </div>`;
 }
-function decide(compId, status){
-  const c=state.completions.find(x=>x.id===compId);
-  if(!c) return;
-  c.status=status; c.approverId=session.id;
-  save();
-  toast(status==="approved"?"Onaylandı ✓ XP eklendi":"Reddedildi");
-  renderApprover();
+async function decide(compId, status){
+  try{
+    await api("/decide", {method:"POST", body:{compId, decision:status}});
+    toast(status==="approved"?"Onaylandı ✓ Yıldız eklendi":"Reddedildi");
+    await refreshState();
+    renderApprover();
+  }catch(e){ toast("Hata: "+e.message); }
 }
 
 /* ======================= ADMIN VIEW ======================= */
@@ -921,36 +928,14 @@ function renderAdmin(){
     </div>
     <div class="card">
       <h2>Yönetim</h2>
-      <button class="btn-no" style="width:100%;margin-bottom:10px" onclick="resetData()">🗑️ Tüm görev kayıtlarını sıfırla</button>
-      <button class="btn-primary" style="width:100%" onclick="seedDemo()">🎲 Demo veri ekle (test için)</button>
+      <button class="btn-no" style="width:100%" onclick="resetData()">🗑️ Tüm görev kayıtlarını sıfırla</button>
     </div>
   `;
 }
-function resetData(){
-  if(!confirm("Tüm görev kayıtları silinecek. Emin misin?")) return;
-  state.completions=[]; save(); toast("Sıfırlandı"); renderAdmin();
-}
-function seedDemo(){
-  const samples=[
-    {u:"c1",t:"ogren",txt:"Bugün ışığın prizmadan geçince renklere ayrıldığını öğrendim, buna tayf deniyormuş ve gökkuşağı da böyle oluşuyormuş.",st:"approved"},
-    {u:"c1",t:"dis_sabah",st:"approved"},{u:"c1",t:"yatak",st:"approved"},{u:"c1",t:"fiziksel",st:"approved"},
-    {u:"c1",t:"kahvalti",st:"approved"},{u:"c1",t:"kitap",txt:"Define Adası okudum, korsanlar hazineyi arıyordu",st:"pending"},
-    {u:"c2",t:"dis_sabah",st:"approved"},{u:"c2",t:"el",st:"approved"},{u:"c2",t:"kahvalti",st:"approved"},
-    {u:"c2",t:"sofra",st:"pending"},{u:"c2",t:"su",st:"approved"},
-    {u:"c3",t:"ogren",txt:"Penguenlerin dizleri aslında tüylerinin altında saklıymış, dışarıdan göremiyoruz.",st:"approved"},
-    {u:"c3",t:"fiziksel",st:"approved"},{u:"c3",t:"dis_sabah",st:"approved"},
-  ];
-  samples.forEach((s,i)=>{
-    const task=TASKS.find(x=>x.id===s.t);
-    state.completions.push({
-      id:"demo"+i, userId:s.u, taskId:s.t, date:todayStr(), week:weekKey(),
-      ts:Date.now()-i*60000, status:s.st,
-      proof:{type:task.proof,text:s.txt||"",photo:null},
-      aiNote:s.t==="ogren"?fakeAIEval(s.txt||"", user(s.u).age):null,
-      approverId:s.st!=="pending"?"p1":null
-    });
-  });
-  save(); toast("Demo veri eklendi"); renderAdmin();
+async function resetData(){
+  if(!confirm("TÜM çocukların görev kayıtları silinecek. Emin misin?")) return;
+  try{ await api("/admin/reset", {method:"POST"}); await refreshState(); toast("Sıfırlandı"); renderAdmin(); }
+  catch(e){ toast("Hata: "+e.message); }
 }
 
 /* ======================= SWITCH SILHOUETTE SVG ======================= */
@@ -986,7 +971,12 @@ function toast(msg){
 }
 
 /* ======================= BOOT ======================= */
-renderLogin();
+async function boot(){
+  try{ const d = await api("/users"); loginUsers = d.users || []; }
+  catch(e){ loginUsers = []; toast("Sunucuya bağlanılamadı"); }
+  renderLogin();
+}
+boot();
 </script>
 </body>
 </html>
