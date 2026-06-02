@@ -10,7 +10,7 @@ const AI_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const MAX_CHILD_TURNS = 4;                     // bu kadar mesajdan sonra AI karar vermek zorunda
 // gorev XP'leri (frontend TASKS ile ESLESMELI; katalog kodda sabit oldugu icin burada da var)
 const TASK_XP = {ogren:100, ekransiz:60, fiziksel:40, yatak:15, dis_sabah:10, dis_aksam:10,
-  el:5, su:5, kahvalti:10, ogle:10, aksam:10, sofra:15, kitap:15};
+  el:5, su:5, banyo:20, kahvalti:10, ogle:10, aksam:10, sofra:15, kitap:15};
 
 /* cocugun onayli toplam XP'si (kod gorevleri + ozel gorevler) */
 async function computeXP(env, userId){
