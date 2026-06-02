@@ -3,8 +3,10 @@
    Gorev katalogu KODDA (frontend); worker ham veri doner, XP'yi frontend hesaplar. */
 
 const enc = new TextEncoder();
-const AI_TASKS = new Set(["ogren"]);          // AI on-degerlendirme gereken gorevler
+const AI_TASKS = new Set(["ogren"]);          // sohbetli AI gorevi
 const TOKEN_TTL = 1000*60*60*24*30;            // 30 gun
+const AI_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+const MAX_CHILD_TURNS = 4;                     // bu kadar mesajdan sonra AI karar vermek zorunda
 
 /* ---------- yardimcilar ---------- */
 const json = (data, status=200) =>
@@ -54,29 +56,39 @@ async function auth(request, env){
   return u || null;
 }
 
-/* ---------- ogrenme degerlendirmesi (Cloudflare Workers AI) ---------- */
-async function aiEvaluate(env, text, age){
-  if(!env.AI){
-    return { ok:1, note:"Otomatik değerlendirme kapalı, lütfen siz kontrol edin." };
-  }
-  const sys = "Sen bir çocuk ödül sisteminde 'yeni bir şey öğren' görevini değerlendiren nazik bir yardımcısın. "+
-    "Sana "+age+" yaşındaki bir çocuğun Türkçe yazdığı metin verilecek. Değerlendir: (1) metin çocuğun KENDİ cümleleri mi, "+
-    "(2) anlamlı, gerçek bir bilgi/öğrenme içeriyor mu, yaşına uygun mu. "+
-    "Kısa, teşvik edici, çocuğa 'sen' diye hitap eden tek cümlelik Türkçe bir yorum yaz. "+
-    "SADECE şu JSON ile yanıt ver, başka hiçbir şey yazma: {\"ok\": true, \"note\": \"...\"}. ok alanı öğrenme geçerliyse true, çok kısa/anlamsız/kopyala-yapıştırsa false.";
+/* ---------- ogrenme SOHBETI (Cloudflare Workers AI, sokratik) ----------
+   action: "ask" (soru sor, devam) | "pass" (gercekten ogrenmis, tamamla) | "fail" (yetersiz, nazikce gonder) */
+async function aiChat(env, messages, age, botName, themeMood, childTurns){
+  if(!env.AI){ return { action:"pass", reply:"Aferin, görevi tamamladın!" }; }
+  const force = childTurns >= MAX_CHILD_TURNS;
+  const sys =
+    "Sen "+botName+", "+age+" yaşındaki bir çocukla sohbet eden meraklı, sıcak bir rehbersin. "+themeMood+" "+
+    "Çocuk bugün öğrendiği YENİ bir şeyi anlatıyor. Amacın kısa bir sohbetle gerçekten öğrenip öğrenmediğini ve konuyu ANLADIĞINI test etmek.\n\n"+
+    "NASIL DAVRAN:\n"+
+    "- Çocuğa 'sen' de, KISA konuş (1-2 cümle), çocuk diliyle, sıcak ve teşvik edici ol.\n"+
+    "- Çocuk sadece konuyu söyleyip açıklamadıysa MERAKLA sor: 'nasıl oluyormuş?', 'neden?', 'bir örnek verir misin?'.\n"+
+    "- Açıkladıkça, gerçekten anladığını sınayan 1 takip sorusu daha sor.\n"+
+    "- Metin ansiklopedi/ders kitabı gibi kusursuz ve yetişkin ağzındaysa kopya şüphelidir: 'kendi cümlelerinle anlatır mısın?' diye iste.\n\n"+
+    "KARAR:\n"+
+    "- Çocuk konuyu KENDİ cümleleriyle açıklayıp anladığını gösterdiyse: action='pass', reply='kutlama'.\n"+
+    "- Hâlâ yüzeysel/eksikse: action='ask', reply='kısa bir soru'.\n"+
+    "- Çocuk açıklayamıyor, bilmiyor ya da konu dışıysa: action='fail', reply='nazikçe biraz daha araştırıp gelmesini söyle'.\n"+
+    (force ? "ÖNEMLİ: Sohbet uzadı, ARTIK karar ver. action SADECE 'pass' veya 'fail' olsun, 'ask' KULLANMA.\n" : "")+
+    "SADECE şu JSON ile yanıt ver, başka hiçbir şey yazma: {\"action\":\"ask|pass|fail\",\"reply\":\"...\"}";
   let r = null;
   try{
-    r = await env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
-      max_tokens:200,
-      messages:[{role:"system",content:sys},{role:"user",content:text}]
-    });
+    r = await env.AI.run(AI_MODEL, { max_tokens:300, messages:[{role:"system",content:sys}].concat(messages) });
     let raw = (r && (r.response != null ? r.response : r.result));
     if(typeof raw !== "string") raw = JSON.stringify(raw||{});
     const m = raw.match(/\{[\s\S]*\}/);
-    const parsed = m ? JSON.parse(m[0]) : {ok:true, note:raw.slice(0,200)};
-    return { ok: parsed.ok===false?0:1, note: (parsed.note||"").slice(0,300) };
+    const p = m ? JSON.parse(m[0]) : {action:"ask", reply:"Biraz daha anlatır mısın?"};
+    let action = ["ask","pass","fail"].includes(p.action) ? p.action : "ask";
+    if(force && action==="ask") action = "pass";  // guvenlik: sonsuz dongu olmasin
+    return { action, reply: (p.reply||"Anlat bakalım.").slice(0,400) };
   }catch(e){
-    return { ok:1, note:"Değerlendirme yapılamadı, lütfen siz kontrol edin." };
+    // AI hatasi: cocugu magdur etme, birkac turdan sonra gecir
+    return childTurns>=2 ? {action:"pass", reply:"Güzel anlattın, görevi tamamladın! ⭐"}
+                         : {action:"ask", reply:"Biraz daha anlatır mısın?"};
   }
 }
 
@@ -129,41 +141,47 @@ export async function onRequest(context){
       return json(await getState(env, me));
     }
 
-    /* --- cocuk: gorev tamamla --- */
+    /* --- cocuk: gorev tamamla (AI olmayan gorevler; ogren sohbetten gelir) --- */
     if(route==="completion" && method==="POST"){
       if(me.role!=="child") return bad("Sadece çocuk görev gönderebilir", 403);
       const { taskId, date, week, proofText, photoB64 } = body;
       if(!taskId) return bad("taskId gerekli");
+      if(AI_TASKS.has(taskId)) return bad("Bu görev sohbet ile yapılır", 400);
       const id = "c_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
       const ts = Date.now();
-      // AI gorevi: ONCE degerlendir. Reddederse KAYDETME, cocuk duzeltsin.
-      let aiOk=null, aiNote=null;
-      const isAiTask = AI_TASKS.has(taskId);
-      if(isAiTask){
-        if(!proofText) return bad("Lütfen ne öğrendiğini yaz");
-        const ev = await aiEvaluate(env, proofText, me.age);
-        aiOk = ev.ok; aiNote = ev.note;
-        if(aiOk===0){
-          // AI reddetti -> kaydetme, anlik geri bildirim
-          return json({ rejected:true, aiNote:{ok:0, note:aiNote} });
-        }
-      }
-      // foto -> R2 (AI gecince ya da AI'siz gorevde)
       let photoKey = null;
       if(photoB64){
         photoKey = "proofs/"+me.id+"/"+id+".jpg";
         const bin = fromB64url(photoB64.replace(/^data:image\/\w+;base64,/, "").replace(/\+/g,"-").replace(/\//g,"_"));
         await env.PROOFS.put(photoKey, bin, {httpMetadata:{contentType:"image/jpeg"}});
       }
-      // AI gorevi gectiyse OTOMATIK onayli; diger gorevler ebeveyn onayina (pending)
-      const autoApprove = isAiTask && aiOk===1;
-      const status = autoApprove ? "approved" : "pending";
-      const approver = autoApprove ? "ai" : null;
       await env.DB.prepare(
         "INSERT INTO completions (id,user_id,task_id,date,week,ts,status,proof_text,proof_photo_key,ai_ok,ai_note,approver_id) "+
-        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
-      ).bind(id, me.id, taskId, date, week, ts, status, proofText||null, photoKey, aiOk, aiNote, approver).run();
-      return json({ ok:true, id, autoApproved:autoApprove, aiNote: aiNote?{ok:aiOk,note:aiNote}:null });
+        "VALUES (?,?,?,?,?,?,'pending',?,?,NULL,NULL,NULL)"
+      ).bind(id, me.id, taskId, date, week, ts, proofText||null, photoKey).run();
+      return json({ ok:true, id });
+    }
+
+    /* --- cocuk: ogrenme sohbeti --- */
+    if(route==="learn-chat" && method==="POST"){
+      if(me.role!=="child") return bad("Yetkisiz", 403);
+      const { messages, date, week } = body;
+      if(!Array.isArray(messages) || !messages.length) return bad("messages gerekli");
+      const clean = messages.filter(m=>m && (m.role==="user"||m.role==="assistant") && m.content)
+        .map(m=>({role:m.role, content:String(m.content).slice(0,1000)})).slice(-12);
+      const childTurns = clean.filter(m=>m.role==="user").length;
+      const ev = await aiChat(env, clean, me.age, body.botName||"rehber", body.themeMood||"", childTurns);
+      if(ev.action==="pass"){
+        const id = "c_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
+        const proof = clean.filter(m=>m.role==="user").map(m=>m.content).join(" / ").slice(0,500);
+        await env.DB.prepare(
+          "INSERT INTO completions (id,user_id,task_id,date,week,ts,status,proof_text,proof_photo_key,ai_ok,ai_note,approver_id) "+
+          "VALUES (?,?,?,?,?,?,'approved',?,NULL,1,?,'ai')"
+        ).bind(id, me.id, "ogren", date, week, Date.now(), proof, ev.reply).run();
+        return json({ reply:ev.reply, done:true, passed:true });
+      }
+      if(ev.action==="fail") return json({ reply:ev.reply, done:true, passed:false });
+      return json({ reply:ev.reply, done:false });
     }
 
     /* --- onaylayici/admin: karar --- */

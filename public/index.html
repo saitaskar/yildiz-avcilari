@@ -205,6 +205,16 @@
   .bot-dot.on{background:#FFD166;width:22px;border-radius:5px;}
   .wiz-nav{display:flex;gap:12px;justify-content:center;}
   .theme-switch{font-size:12px;color:var(--muted);background:#F0ECFA;border-radius:20px;padding:6px 12px;font-weight:600;}
+
+  /* ---------- LEARN CHAT ---------- */
+  .chat-msgs{max-height:46vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:8px 2px;margin-bottom:10px;}
+  .chat-bubble{padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.45;max-width:88%;word-wrap:break-word;}
+  .chat-bubble.bot{background:#F0ECFA;color:var(--text);align-self:flex-start;border-bottom-left-radius:4px;}
+  .chat-bubble.me{background:var(--primary);color:#fff;align-self:flex-end;border-bottom-right-radius:4px;}
+  .chat-input-row{display:flex;gap:8px;}
+  .chat-input-row input{flex:1;border:2px solid var(--line);border-radius:12px;padding:12px;min-width:0;}
+  .chat-input-row input:focus{outline:none;border-color:var(--primary);}
+  .chat-input-row input:disabled{background:#F4F1FB;}
 </style>
 </head>
 <body>
@@ -787,6 +797,7 @@ function leaderboardHTML(){
 let pendingPhoto = null;
 function openDo(taskId){
   const task = TASKS.find(t=>t.id===taskId);
+  if(task.ai){ openLearnChat(task); return; }   // ogrenme gorevi = sohbet
   pendingPhoto = null;
   const variant = tv(task, session.age);
   const ph = (variant && variant.ph) ? variant.ph : "Birkaç cümle yaz...";
@@ -883,6 +894,80 @@ function showCelebrate(note, xp){
       <button class="btn-primary" style="width:100%" onclick="closeModal()">Süper! 🚀</button>
     </div>
   `);
+}
+
+/* ======================= OGRENME SOHBETI ======================= */
+const LEARN_HELLO = {
+  scifi:"Selam Kaptan! 🚀 Bugün hangi yeni bilgiyi keşfettin? Anlat bakalım.",
+  fantasy:"Selam genç şövalye! ⚔️ Bugün öğrendiğin kadim bilgiyi paylaş benimle.",
+  pixel:"Hey usta! 🧱 Bugün kafanda ne craft ettin, yeni ne öğrendin?",
+  default:"Selam! Bugün yeni ne öğrendin? Anlat bakalım."
+};
+const LEARN_MOOD = {
+  scifi:"Uzay gemisi/galaktik kaşif temasında konuş, ara sıra 'Kaptan' diye hitap et.",
+  fantasy:"Fantastik diyar/şövalye temasında konuş, 'genç şövalye/kaşif' gibi hitap et.",
+  pixel:"Piksel/oyun (Minecraft tarzı) temasında konuş, 'usta' diye hitap et."
+};
+let chatMessages = [];
+let chatBusy = false;
+function chatBot(){ const th=themeOf(session); return th?th.bot:{name:"Rehber",ico:"🤖"}; }
+function openLearnChat(task){
+  const th = themeOf(session);
+  const hello = LEARN_HELLO[th?th.id:"default"] || LEARN_HELLO.default;
+  chatMessages = [{role:"assistant", content:hello}];
+  chatBusy = false;
+  const bot = chatBot();
+  showModal(`
+    <h3>${bot.ico} ${bot.name}</h3>
+    <div class="msub">${task.emoji} ${themed(task).title} · gerçekten öğrendiğini göster, yıldızı kap ⭐</div>
+    <div class="chat-msgs" id="chatMsgs"></div>
+    <div class="chat-input-row">
+      <input type="text" id="chatInput" maxlength="600" placeholder="Buraya yaz..." onkeydown="if(event.key==='Enter')sendChat()">
+      <button class="btn-primary" id="chatSend" onclick="sendChat()">Gönder</button>
+    </div>
+    <button class="btn-ghost" style="width:100%;margin-top:10px" onclick="closeModal()">Kapat</button>
+  `);
+  renderChatMsgs();
+  setTimeout(()=>{ const i=document.getElementById("chatInput"); if(i) i.focus(); }, 120);
+}
+function renderChatMsgs(){
+  const c=document.getElementById("chatMsgs"); if(!c) return;
+  const ico = chatBot().ico;
+  c.innerHTML = chatMessages.map(m=> m.role==="assistant"
+    ? `<div class="chat-bubble bot">${ico} ${m.content}</div>`
+    : `<div class="chat-bubble me">${m.content}</div>`).join("")
+    + (chatBusy?`<div class="chat-bubble bot">${ico} <i>yazıyor...</i></div>`:"");
+  c.scrollTop = c.scrollHeight;
+}
+async function sendChat(){
+  if(chatBusy) return;
+  const inp=document.getElementById("chatInput"); if(!inp || inp.disabled) return;
+  const txt=inp.value.trim(); if(txt.length<2) return;
+  chatMessages.push({role:"user", content:txt}); inp.value="";
+  chatBusy=true; renderChatMsgs();
+  const th=themeOf(session); const bot=chatBot();
+  try{
+    const r = await api("/learn-chat", {method:"POST", body:{
+      messages:chatMessages, date:todayStr(), week:weekKey(),
+      botName:bot.name, themeMood:(th?LEARN_MOOD[th.id]:"")||""
+    }});
+    chatBusy=false;
+    chatMessages.push({role:"assistant", content:r.reply});
+    renderChatMsgs();
+    if(r.done && r.passed){
+      const send=document.getElementById("chatSend"); if(send) send.disabled=true;
+      if(inp) inp.disabled=true;
+      const xp = (TASKS.find(t=>t.id==="ogren")||{}).xp || 100;
+      setTimeout(async ()=>{ closeModal(); await refreshState(); renderChild(); showCelebrate(r.reply, xp); }, 1400);
+    } else if(r.done && !r.passed){
+      const send=document.getElementById("chatSend"); if(send) send.disabled=true;
+      if(inp){ inp.disabled=true; inp.placeholder="Biraz daha araştırıp tekrar gel 💪"; }
+    }
+  }catch(e){
+    chatBusy=false;
+    chatMessages.push({role:"assistant", content:"Bir sorun oldu, tekrar dener misin?"});
+    renderChatMsgs();
+  }
 }
 
 /* ======================= APPROVER VIEW ======================= */
