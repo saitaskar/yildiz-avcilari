@@ -54,31 +54,27 @@ async function auth(request, env){
   return u || null;
 }
 
-/* ---------- Claude ogrenme degerlendirmesi ---------- */
+/* ---------- ogrenme degerlendirmesi (Cloudflare Workers AI) ---------- */
 async function aiEvaluate(env, text, age){
-  if(!env.ANTHROPIC_API_KEY){
-    // anahtar yoksa notr gec (onaylayiciya birak)
+  if(!env.AI){
     return { ok:1, note:"Otomatik değerlendirme kapalı, lütfen siz kontrol edin." };
   }
   const sys = "Sen bir çocuk ödül sisteminde 'yeni bir şey öğren' görevini değerlendiren nazik bir yardımcısın. "+
-    "Sana "+age+" yaşındaki bir çocuğun yazdığı metin verilecek. Değerlendir: (1) metin çocuğun KENDİ cümleleri mi yoksa "+
-    "kopyala-yapıştır/ezber mi, (2) anlamlı, gerçek bir bilgi/öğrenme içeriyor mu, yaşına uygun mu. "+
-    "Kısa, teşvik edici, çocuğa hitap eden tek cümlelik Türkçe bir yorum yaz. "+
-    "SADECE şu JSON formatında yanıt ver: {\"ok\": true/false, \"note\": \"...\"}. ok=öğrenme geçerli mi.";
+    "Sana "+age+" yaşındaki bir çocuğun Türkçe yazdığı metin verilecek. Değerlendir: (1) metin çocuğun KENDİ cümleleri mi, "+
+    "(2) anlamlı, gerçek bir bilgi/öğrenme içeriyor mu, yaşına uygun mu. "+
+    "Kısa, teşvik edici, çocuğa 'sen' diye hitap eden tek cümlelik Türkçe bir yorum yaz. "+
+    "SADECE şu JSON ile yanıt ver, başka hiçbir şey yazma: {\"ok\": true, \"note\": \"...\"}. ok alanı öğrenme geçerliyse true, çok kısa/anlamsız/kopyala-yapıştırsa false.";
+  let r = null;
   try{
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method:"POST",
-      headers:{ "content-type":"application/json", "x-api-key":env.ANTHROPIC_API_KEY, "anthropic-version":"2023-06-01" },
-      body: JSON.stringify({
-        model:"claude-haiku-4-5-20251001", max_tokens:200, system:sys,
-        messages:[{role:"user", content:text}]
-      })
+    r = await env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
+      max_tokens:200,
+      messages:[{role:"system",content:sys},{role:"user",content:text}]
     });
-    const d = await r.json();
-    const raw = d.content && d.content[0] && d.content[0].text || "{}";
+    let raw = (r && (r.response != null ? r.response : r.result));
+    if(typeof raw !== "string") raw = JSON.stringify(raw||{});
     const m = raw.match(/\{[\s\S]*\}/);
-    const parsed = m ? JSON.parse(m[0]) : {ok:true, note:""};
-    return { ok: parsed.ok?1:0, note: parsed.note || "" };
+    const parsed = m ? JSON.parse(m[0]) : {ok:true, note:raw.slice(0,200)};
+    return { ok: parsed.ok===false?0:1, note: (parsed.note||"").slice(0,300) };
   }catch(e){
     return { ok:1, note:"Değerlendirme yapılamadı, lütfen siz kontrol edin." };
   }

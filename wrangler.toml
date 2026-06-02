@@ -13,6 +13,10 @@ database_id = "e4cd69a3-958f-4028-bbb7-b08a33cc7d2c"
 binding = "PROOFS"
 bucket_name = "yildiz-proofs"
 
+# Workers AI: ogrenme gorevi degerlendirmesi (ekstra key yok)
+[ai]
+binding = "AI"
+
 # Secret'lar (wrangler pages secret put ile):
 #   SESSION_SECRET     - oturum token imzasi (HMAC)
 #   ANTHROPIC_API_KEY  - ogrenme gorevi AI degerlendirmesi

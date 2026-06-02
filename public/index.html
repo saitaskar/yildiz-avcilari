@@ -240,6 +240,7 @@
     <div class="brand">🌟 <span id="brandTop">Yıldız Avcıları</span></div>
     <div class="who">
       <span id="whoLabel"></span>
+      <button class="btn-logout" onclick="manualRefresh()" title="Yenile">🔄</button>
       <button class="btn-logout" onclick="logout()">Çıkış</button>
     </div>
   </div>
@@ -574,8 +575,27 @@ function enterApp(){
   document.getElementById("whoLabel").innerHTML = `${session.av} <b>${session.name}</b>`;
   if(session.role==="child") applyTheme(themeOf(session)); else resetTheme();
   renderApp();
+  startAutoRefresh();
 }
-function logout(){ resetTheme(); session=null; authToken=null; pinTarget=null; pinDraft=""; document.getElementById("wizardMount").innerHTML=""; document.getElementById("appBody").innerHTML=""; document.getElementById("appView").classList.add("hidden"); document.getElementById("loginView").classList.remove("hidden"); renderLogin(); }
+function logout(){ stopAutoRefresh(); resetTheme(); session=null; authToken=null; pinTarget=null; pinDraft=""; document.getElementById("wizardMount").innerHTML=""; document.getElementById("appBody").innerHTML=""; document.getElementById("appView").classList.add("hidden"); document.getElementById("loginView").classList.remove("hidden"); renderLogin(); }
+
+/* ---- oto-yenileme: 90 sn'de bir, modal/sihirbaz aciksa dokunma ---- */
+let refreshTimer = null;
+function startAutoRefresh(){
+  stopAutoRefresh();
+  refreshTimer = setInterval(async ()=>{
+    if(!session) return;
+    if(document.getElementById("modalMount").innerHTML) return;   // bir sey yaziyor/onayliyor olabilir
+    if(document.getElementById("wizardMount").innerHTML) return;  // sihirbaz acik
+    try{ await refreshState(); renderApp(); }catch(e){}
+  }, 90000);
+}
+function stopAutoRefresh(){ if(refreshTimer){ clearInterval(refreshTimer); refreshTimer=null; } }
+async function manualRefresh(){
+  toast("Yenileniyor...");
+  try{ await refreshState(); renderApp(); toast("Güncellendi ✓"); }
+  catch(e){ toast("Yenilenemedi"); }
+}
 
 /* ======================= RPG ONBOARDING WIZARD ======================= */
 let wizPickedTheme=null, wizStep=0;
