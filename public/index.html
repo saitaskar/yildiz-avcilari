@@ -95,9 +95,9 @@
   .pct-big{font-size:13px;opacity:.85;text-align:center;margin-top:8px;}
 
   /* ---------- Task list ---------- */
-  .seg{display:flex;gap:8px;margin-bottom:14px;background:#EFE9FB;padding:5px;border-radius:14px;}
+  .seg{display:flex;gap:8px;margin-bottom:14px;background:rgba(255,255,255,.07);padding:5px;border-radius:14px;}
   .seg button{flex:1;background:transparent;border-radius:10px;padding:9px 0;font-weight:700;font-size:13px;color:var(--muted);}
-  .seg button.active{background:#fff;color:var(--primary-dark);box-shadow:0 2px 8px rgba(0,0,0,.06);}
+  .seg button.active{background:var(--primary);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.2);}
 
   .task{display:flex;align-items:center;gap:12px;padding:12px;border:2px solid var(--line);border-radius:14px;margin-bottom:10px;transition:.15s;}
   .task .t-ico{width:46px;height:46px;border-radius:12px;background:#F3ECFF;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;}
@@ -392,8 +392,8 @@ const THEMES = {
   },
   pixel:{
     id:"pixel", name:"Piksel Evreni", cls:"Piksel Ustası", ico:"🧱",
-    colors:{"primary":"#5AC54F","primary-dark":"#2E7D32","accent":"#8B5A2B","bg":"#101418","card":"#1B2228","text":"#E9F0E6","muted":"#8AA088","line":"#2A3540"},
-    cardGrad:"linear-gradient(135deg,#1F3A1E,#3A2A14)",
+    colors:{"primary":"#62D44F","primary-dark":"#2E9D3A","accent":"#E0A93A","bg":"#12171C","card":"#1E2630","text":"#EAF2E6","muted":"#90A892","line":"#2C3742"},
+    cardGrad:"linear-gradient(150deg,#1F4D2B,#2E7438)",
     bot:{name:"Bit", ico:"🤖"},
     intro:"Dünyanın en nadir materyali henüz birleştirilmemiş bloklar halinde. Onu craft etmek için her gün kaynak toplayan bir mimar ol.",
     story:"Dünyanın en nadir materyalini craft etmeye çalışan bir mimarsın. Siluet, henüz birleştirilmemiş blok yığını. Her gün kaynak topla, yapıyı tamamla.",
@@ -791,7 +791,12 @@ function renderChild(){
   `;
   renderChildContent();
 }
-function setChildTab(t){ childTab=t; renderChildContent(); }
+function setChildTab(t){
+  childTab=t;
+  const segs=document.querySelectorAll(".seg button");
+  ["today","week","board"].forEach((k,i)=>{ if(segs[i]) segs[i].classList.toggle("active", k===t); });
+  renderChildContent();
+}
 function renderChildContent(){
   const c = document.getElementById("childContent");
   if(childTab==="board"){ c.innerHTML = leaderboardHTML(); return; }
