@@ -116,8 +116,8 @@
   .btn-do:active{background:var(--primary-dark);}
   .btn-do:disabled{background:#D8CFEC;color:#fff;}
   .task.locked{opacity:.55;}
-  .task.complete{border-color:#CDEBD3;background:#F4FBF5;}
-  .task.waiting{border-color:#FCEFC7;background:#FFFDF6;}
+  .task.complete{border-color:rgba(46,125,50,.55);background:rgba(46,125,50,.13);}
+  .task.waiting{border-color:rgba(249,168,37,.55);background:rgba(249,168,37,.13);}
 
   /* ---------- Approver ---------- */
   .approve-card{border:2px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;}
@@ -1188,11 +1188,10 @@ async function sendChat(){
     chatBusy=false;
     chatMessages.push({role:"assistant", content:r.reply});
     renderChatMsgs();
-    if(r.done && r.passed){
-      const send=document.getElementById("chatSend"); if(send) send.disabled=true;
-      if(inp) inp.disabled=true;
-      const xp = (TASKS.find(t=>t.id==="ogren")||{}).xp || 100;
-      setTimeout(async ()=>{ closeModal(); await refreshState(); renderChild(); showCelebrate(r.reply, xp); }, 1400);
+    if(r.justWon){
+      // yildiz kazanildi AMA sohbet acik kalir, cocuk merak ederse devam eder
+      await refreshState(); renderChild(); fireConfetti();
+      toast("⭐ Yıldızını kazandın! İstersen sohbete devam et.");
     } else if(r.done && !r.passed){
       const send=document.getElementById("chatSend"); if(send) send.disabled=true;
       if(inp){ inp.disabled=true; inp.placeholder="Biraz daha araştırıp tekrar gel 💪"; }

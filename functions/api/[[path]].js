@@ -102,9 +102,9 @@ async function auth(request, env){
 
 /* ---------- ogrenme SOHBETI (Cloudflare Workers AI, sokratik) ----------
    action: "ask" (soru sor, devam) | "pass" (gercekten ogrenmis, tamamla) | "fail" (yetersiz, nazikce gonder) */
-async function aiChat(env, messages, age, botName, themeMood, childTurns){
-  if(!env.AI){ return { action:"pass", reply:"Aferin, görevi tamamladın!" }; }
-  const force = childTurns >= MAX_CHILD_TURNS;
+async function aiChat(env, messages, age, botName, themeMood, childTurns, alreadyPassed){
+  if(!env.AI){ return { action: alreadyPassed?"ask":"pass", reply: alreadyPassed?"Güzel! Başka ne öğrendin?":"Aferin, görevi tamamladın!" }; }
+  const force = !alreadyPassed && childTurns >= MAX_CHILD_TURNS;
   const sys =
     "Sen "+botName+", "+age+" yaşındaki bir çocukla sohbet eden meraklı, sıcak bir rehbersin. "+themeMood+" "+
     "Çocuk bugün öğrendiği YENİ bir şeyi anlatıyor. Amacın kısa bir sohbetle gerçekten öğrenip öğrenmediğini ve konuyu ANLADIĞINI test etmek.\n\n"+
@@ -118,6 +118,7 @@ async function aiChat(env, messages, age, botName, themeMood, childTurns){
     "- Hâlâ yüzeysel, tek kelimelik, sadece konu adı veya eksikse: action='ask', reply='kısa bir soru'.\n"+
     "- Çocuk açıklayamıyor, bilmiyor ya da konu dışıysa: action='fail', reply='nazikçe biraz daha araştırıp gelmesini söyle'.\n"+
     "ÇOK ÖNEMLİ: İlk mesajlar genelde yüzeyseldir. Çocuk gerçek bir AÇIKLAMA yapana ve en az 2 sorunu cevaplayana kadar ASLA 'pass' verme. Tek kelime ('neptün') ya da sadece konu adı ('gezegenleri öğrendim') KESİNLİKLE pass değildir, daha derine in.\n"+
+    (alreadyPassed ? "ÖNEMLİ: Çocuk bu görevi ZATEN geçti ve yıldızını aldı. Artık SADECE sohbet et, merakını besle, konuyu biraz daha aç, başka ilginç sorular sor. action HER ZAMAN 'ask' olsun, asla 'pass'/'fail' verme.\n" : "")+
     (force ? "NOT: Sohbet uzadı, ARTIK karar ver. action SADECE 'pass' veya 'fail' olsun, 'ask' KULLANMA.\n" : "")+
     "SADECE şu JSON ile yanıt ver, başka hiçbir şey yazma: {\"action\":\"ask|pass|fail\",\"reply\":\"...\"}";
   const raw = await callAI(env, sys, messages);
@@ -132,6 +133,7 @@ async function aiChat(env, messages, age, botName, themeMood, childTurns){
                       : {action:"ask", reply:"Biraz daha açar mısın?"};
   let action = ["ask","pass","fail"].includes(p.action) ? p.action : "ask";
   if(force && action==="ask") action = "pass";  // guvenlik: sonsuz dongu olmasin
+  if(alreadyPassed) action = "ask";             // zaten gecti: sadece sohbet devam
   return { action, reply: (p.reply||"Anlat bakalım.").slice(0,400) };
 }
 
@@ -283,7 +285,8 @@ export async function onRequest(context){
       const clean = messages.filter(m=>m && (m.role==="user"||m.role==="assistant") && m.content)
         .map(m=>({role:m.role, content:String(m.content).slice(0,1000)})).slice(-12);
       const childTurns = clean.filter(m=>m.role==="user").length;
-      const ev = await aiChat(env, clean, me.age, body.botName||"rehber", body.themeMood||"", childTurns);
+      const already = await env.DB.prepare("SELECT id FROM completions WHERE user_id=? AND task_id='ogren' AND week=? AND status='approved'").bind(me.id, week).first();
+      const ev = await aiChat(env, clean, me.age, body.botName||"rehber", body.themeMood||"", childTurns, !!already);
       const logChat = async (result) => {
         const msgs = clean.concat([{role:"assistant", content:ev.reply}]);
         await env.DB.prepare("INSERT INTO chat_logs (id,child_id,messages,result,ts) VALUES (?,?,?,?,?)")
@@ -298,7 +301,7 @@ export async function onRequest(context){
         ).bind(id, me.id, "ogren", date, week, Date.now(), proof, ev.reply).run();
         await logChat("pass");
         await checkReward(env, me.id); await checkCheckpoints(env, me.id);   // hedef + ara odul kontrolu
-        return json({ reply:ev.reply, done:true, passed:true });
+        return json({ reply:ev.reply, done:false, passed:true, justWon:true });  // yildiz verildi ama sohbet ACIK kalir
       }
       if(ev.action==="fail"){ await logChat("fail"); return json({ reply:ev.reply, done:true, passed:false }); }
       return json({ reply:ev.reply, done:false });
