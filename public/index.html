@@ -1281,10 +1281,18 @@ function renderAdmin(){
     </div>
     <div class="card">
       <h2>🏆 Kazanılan Hediyeler</h2>
-      ${(state.rewards&&state.rewards.length) ? state.rewards.map(r=>{
-        const u=user(r.user_id); const d=new Date(r.ts).toLocaleDateString("tr-TR");
-        return `<div class="lb-row"><div class="lb-av">${u?u.av:'🎁'}</div><div class="lb-body"><b>${u?u.name:r.user_id}</b><div style="font-size:12px;color:var(--muted)">${PRIZE_LABEL[r.prize]||r.prize} · ${d}</div></div><div class="lb-xp">${r.xp_at_win} ⭐</div></div>`;
-      }).join("") : `<div class="empty"><span class="e">🎁</span>Henüz hediye kazanan yok. İlk kim olacak?</div>`}
+      ${(()=>{
+        const big=(state.rewards||[]).map(r=>{
+          const u=user(r.user_id); const d=new Date(r.ts).toLocaleDateString("tr-TR");
+          return `<div class="lb-row"><div class="lb-av">${u?u.av:'🏆'}</div><div class="lb-body"><b>${u?u.name:r.user_id}</b><div style="font-size:12px;color:var(--muted)">🏆 ${PRIZE_LABEL[r.prize]||r.prize} · büyük ödül · ${d}</div></div><div class="lb-xp">${r.xp_at_win} ⭐</div></div>`;
+        });
+        const cp=(state.checkpoints||[]).filter(c=>c.status==="reached"||c.status==="given").sort((a,b)=>(b.reachedTs||0)-(a.reachedTs||0)).map(c=>{
+          const u=user(c.childId);
+          return `<div class="lb-row"><div class="lb-av">${u?u.av:'🎯'}</div><div class="lb-body"><b>${u?u.name:c.childId}</b><div style="font-size:12px;color:var(--muted)">🎯 ${c.reward} · ${c.threshold} ⭐ ${c.status==='given'?'· ✓ verildi':'· 🎁 verilecek'}</div></div></div>`;
+        });
+        const all=big.concat(cp);
+        return all.length ? all.join("") : `<div class="empty"><span class="e">🎁</span>Henüz hediye kazanan yok. İlk kim olacak?</div>`;
+      })()}
     </div>
     <div class="card">
       <h2>📊 İstatistikler</h2>

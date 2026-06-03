@@ -182,7 +182,7 @@ async function getState(env, me){
   const ctRs = await env.DB.prepare("SELECT * FROM custom_tasks WHERE status IN ('active','done')").all();
   const customTasks = (ctRs.results||[]).map(c=>({ id:c.id, childId:c.child_id, title:c.title, emoji:c.emoji, xp:c.xp, by:c.created_by, status:c.status }));
   const cpRs = await env.DB.prepare("SELECT * FROM checkpoints WHERE status!='cancelled' ORDER BY threshold").all();
-  const checkpoints = (cpRs.results||[]).map(c=>({ id:c.id, childId:c.child_id, threshold:c.threshold, reward:c.reward, status:c.status, by:c.created_by }));
+  const checkpoints = (cpRs.results||[]).map(c=>({ id:c.id, childId:c.child_id, threshold:c.threshold, reward:c.reward, status:c.status, by:c.created_by, reachedTs:c.reached_ts }));
   let rewards = null;
   if(me.role==="admin"){
     rewards = (await env.DB.prepare("SELECT * FROM rewards_log ORDER BY ts DESC").all()).results||[];
