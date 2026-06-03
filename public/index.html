@@ -929,7 +929,7 @@ function taskRow(task){
 }
 function leaderboardHTML(highlight){
   highlight = highlight || [session.id];
-  const kids = state.users.filter(u=>u.role==="child")
+  const kids = state.users.filter(u=>u.role==="child" && !u.hidden)
     .map(u=>({u, xp:userXP(u.id)}))
     .sort((a,b)=>b.xp-a.xp);
   return `<div class="card"><h2>Sıralama 🏆</h2><div class="sub">Dostça yarış. Herkes kendi hediyesini açıyor.</div>
@@ -1249,7 +1249,7 @@ function checkpointListFor(kidIds){
   }).join("");
 }
 function openCheckpointForm(){
-  const ids = session.role==="admin" ? state.users.filter(u=>u.role==="child").map(u=>u.id) : session.kids;
+  const ids = session.role==="admin" ? state.users.filter(u=>u.role==="child" && !u.hidden).map(u=>u.id) : session.kids;
   const opts = ids.map(k=>{const u=user(k); return `<option value="${k}">${u?u.name:k}</option>`;}).join("");
   showModal(`
     <h3>🎯 Ara ödül ekle</h3>
@@ -1415,12 +1415,12 @@ function renderAdmin(){
     </div>
     <div class="card">
       <h2>Çocuklar</h2>
-      ${state.users.filter(u=>u.role==="child").map(u=>kidStatusRow(u.id)).join("")}
+      ${state.users.filter(u=>u.role==="child" && !u.hidden).map(u=>kidStatusRow(u.id)).join("")}
     </div>
     <div class="card">
       <h2>🎯 Ara ödüller</h2>
       <div class="sub">Herhangi bir çocuğa ara hedef koy; ulaşınca burada görünür.</div>
-      ${checkpointListFor(state.users.filter(u=>u.role==="child").map(u=>u.id))}
+      ${checkpointListFor(state.users.filter(u=>u.role==="child" && !u.hidden).map(u=>u.id))}
       <button class="btn-primary" style="width:100%;margin-top:6px" onclick="openCheckpointForm()">🎯 Yeni ara ödül</button>
     </div>
     <div class="card">
@@ -1440,7 +1440,7 @@ function renderAdmin(){
     </div>
     <div class="card">
       <h2>📊 İstatistikler</h2>
-      ${state.users.filter(u=>u.role==="child").map(u=>{
+      ${state.users.filter(u=>u.role==="child" && !u.hidden).map(u=>{
         const done=state.completions.filter(c=>c.userId===u.id && c.status==="approved").length;
         const pend=state.completions.filter(c=>c.userId===u.id && c.status==="pending").length;
         return `<div class="kv"><span>${u.av} ${u.name}</span><b>${userXP(u.id)} ⭐ · ${done} görev${pend?' · '+pend+' onayda':''}</b></div>`;
@@ -1502,7 +1502,8 @@ function toast(msg){
 
 /* ======================= BOOT ======================= */
 async function boot(){
-  try{ const d = await api("/users"); loginUsers = d.users || []; }
+  const dev = location.search.indexOf("dev")>=0;   // ?dev ile gizli (test) kullanicilar da gorunur
+  try{ const d = await api("/users"+(dev?"?dev":"")); loginUsers = d.users || []; }
   catch(e){ loginUsers = []; toast("Sunucuya bağlanılamadı"); }
   renderLogin();
 }

@@ -87,7 +87,8 @@ async function verifyToken(token, secret){
 }
 function safeUser(u){
   return { id:u.id, role:u.role, name:u.name, age:u.age, av:u.av, title:u.title,
-    theme:u.theme, parents:u.parents?JSON.parse(u.parents):null, kids:u.kids?JSON.parse(u.kids):null };
+    theme:u.theme, parents:u.parents?JSON.parse(u.parents):null, kids:u.kids?JSON.parse(u.kids):null,
+    hidden:u.hidden||0 };
 }
 async function auth(request, env){
   const h = request.headers.get("Authorization")||"";
@@ -214,7 +215,8 @@ export async function onRequest(context){
   try{
     /* --- public: login ekrani icin (PIN yok, mahremiyet: ilk ad + avatar, yas/soyad yok) --- */
     if(route==="users" && method==="GET"){
-      const rs = await env.DB.prepare("SELECT id,role,name,av FROM users").all();
+      let dev=false; try{ dev = new URL(request.url).searchParams.get("dev")!=null; }catch(e){}
+      const rs = await env.DB.prepare(dev ? "SELECT id,role,name,av FROM users" : "SELECT id,role,name,av FROM users WHERE hidden=0").all();
       const users = (rs.results||[]).map(u=>({
         id:u.id, role:u.role, av:u.av,
         name: String(u.name||"").split(" ")[0]   // sadece ilk ad, rol etiketi yok
