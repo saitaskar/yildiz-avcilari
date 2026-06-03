@@ -108,7 +108,7 @@ Demo seed logins: children `1111` / `2222` / `3333`, approvers `1234`, admin `00
 
 ## 📝 License
 
-MIT — see [LICENSE](LICENSE).
+**AGPL-3.0** — see [LICENSE](LICENSE). Free and open source: use, study, modify and share it freely (including running it as a web service). But any distributed or network-served version must keep its source open under the same license. You cannot close the source and sell it as a proprietary product.
 
 ---
 

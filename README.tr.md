@@ -99,7 +99,7 @@ Demo seed girişleri: çocuklar `1111` / `2222` / `3333`, onaylayıcılar `1234`
 
 ## 📝 Lisans
 
-MIT — bkz [LICENSE](LICENSE).
+**AGPL-3.0** — bkz [LICENSE](LICENSE). Özgür ve açık kaynak: serbestçe kullan, incele, değiştir, paylaş (web servisi olarak çalıştırmak dahil). Ancak dağıtılan ya da internetten sunulan her sürüm, kaynağını aynı lisansla açık tutmak zorundadır. Kaynağı kapatıp özel/ticari ürün olarak satamazsınız.
 
 ---
 
