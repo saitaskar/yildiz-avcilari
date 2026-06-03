@@ -229,6 +229,18 @@
   .cp-list{margin-top:12px;display:flex;flex-direction:column;gap:6px;}
   .cp-item{display:flex;justify-content:space-between;gap:10px;font-size:13px;background:rgba(255,255,255,.1);border-radius:10px;padding:7px 12px;color:rgba(255,255,255,.72);}
   .cp-item.on{background:rgba(255,209,102,.22);color:#FFE9B0;font-weight:700;}
+
+  /* rozetler */
+  .badge-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px;}
+  .badge{text-align:center;padding:12px 6px;border:2px solid var(--line);border-radius:14px;opacity:.4;filter:grayscale(1);transition:.2s;}
+  .badge.on{opacity:1;filter:none;border-color:var(--accent);background:rgba(255,122,24,.12);}
+  .badge .b-e{font-size:30px;line-height:1;}
+  .badge .b-n{font-size:11px;font-weight:700;margin-top:5px;color:var(--text);}
+
+  /* konfeti */
+  .confetti-wrap{position:fixed;inset:0;pointer-events:none;z-index:250;overflow:hidden;}
+  .confetti{position:absolute;top:-12px;width:9px;height:14px;border-radius:2px;animation:confFall 2.3s linear forwards;}
+  @keyframes confFall{to{transform:translateY(110vh) rotate(560deg);opacity:.7;}}
 </style>
 </head>
 <body>
@@ -555,6 +567,54 @@ function userXP(userId){
     .filter(c=>c.userId===userId && c.status==="approved")
     .reduce((s,c)=> s + xpForTask(c.taskId), 0);
 }
+/* ardisik gun serisi (streak): o gun en az 1 onayli gorev = seri devam.
+   bugun henuz yapilmadiysa seri kirilmaz (dunden sayilir). */
+function userStreak(userId){
+  const dates = new Set(state.completions.filter(c=>c.userId===userId && c.status==="approved").map(c=>c.date));
+  if(!dates.size) return 0;
+  const fmt = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  const d = new Date();
+  if(!dates.has(fmt(d))) d.setDate(d.getDate()-1);   // bugun bos ise dunden basla
+  let streak=0;
+  while(dates.has(fmt(d))){ streak++; d.setDate(d.getDate()-1); }
+  return streak;
+}
+/* seviye/rutbe: yildiza gore, tema diline uygun */
+const RANK_STEPS = [0,150,400,800,1400,2200];
+const RANKS = {
+  scifi:["Çaylak","Pilot","Kaptan","Komutan","Amiral","Yıldız Amirali"],
+  fantasy:["Çırak","Silahtar","Şövalye","Kumandan","Lord","Efsane"],
+  pixel:["Yeni Oyuncu","Madenci","İnşaatçı","Mimar","Usta","Efsane"],
+  default:["Başlangıç","Acemi","Gözde","Uzman","Şampiyon","Efsane"]
+};
+function userRank(xp, themeId){
+  const list = RANKS[themeId]||RANKS.default;
+  let i=0; for(let k=0;k<RANK_STEPS.length;k++){ if(xp>=RANK_STEPS[k]) i=k; }
+  return { name:list[i], level:i+1, next:(RANK_STEPS[i+1]||null) };
+}
+/* rozetler/basarimlar (mevcut veriden turetilir, D1 tablosu yok) */
+function userBadges(userId){
+  const comps = state.completions.filter(c=>c.userId===userId && c.status==="approved");
+  const cnt = id => comps.filter(c=>c.taskId===id).length;
+  const xp = userXP(userId), st = userStreak(userId);
+  return [
+    {e:"🌱", n:"İlk Adım", ok: comps.length>=1},
+    {e:"🔥", n:"Ateşli", ok: st>=3},
+    {e:"💪", n:"Haftalık Kahraman", ok: st>=7},
+    {e:"🧠", n:"Meraklı", ok: cnt("ogren")>=3},
+    {e:"📚", n:"Kitap Kurdu", ok: cnt("kitap")>=10},
+    {e:"🦷", n:"Tertemiz", ok: (cnt("dis_sabah")+cnt("dis_aksam"))>=10},
+    {e:"⭐", n:"Yıldız Toplayıcı", ok: xp>=500},
+    {e:"🌟", n:"Süperstar", ok: xp>=1500},
+    {e:"🏆", n:"Şampiyon", ok: xp>=2500},
+  ];
+}
+function badgesHTML(userId){
+  const b=userBadges(userId); const earned=b.filter(x=>x.ok).length;
+  return `<div class="card"><h2>🏅 Rozetlerim <span style="color:var(--muted);font-size:14px;font-weight:600">${earned}/${b.length}</span></h2>
+    <div class="sub">Görev yaptıkça rozet biriktir!</div>
+    <div class="badge-grid">${b.map(x=>`<div class="badge ${x.ok?'on':''}"><div class="b-e">${x.e}</div><div class="b-n">${x.n}</div></div>`).join("")}</div></div>`;
+}
 function pendingForApprover(appr){
   return state.completions
     .filter(c=>c.status==="pending" && appr.kids.includes(c.userId))
@@ -762,6 +822,8 @@ function renderChild(){
   const heroGrad = th ? th.cardGrad : "linear-gradient(160deg,#3A1D6E,#6C2BD9)";
   const prizeName = th ? th.prize : "Hediye Sandığı";
   const revealLabel = th ? th.revealLabel : PRIZE_LABEL[state.season.prize];
+  const streak = userStreak(session.id);
+  const rank = th ? userRank(xp, th.id) : userRank(xp, "default");
   const myCps = (state.checkpoints||[]).filter(c=>c.childId===session.id).sort((a,b)=>a.threshold-b.threshold);
   const cpMarks = myCps.map(c=>{
     const left = Math.min(100, c.threshold/state.season.goal*100);
@@ -779,7 +841,7 @@ function renderChild(){
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div><h2>${prizeName}</h2>
         <div class="sub">${th?th.story.split('.')[0]+'.':'Görev yaptıkça netleşiyor...'}</div></div>
-        ${th?`<button class="theme-switch" style="background:rgba(255,255,255,.18);color:#fff" onclick="changeTheme()">${th.ico} ${th.cls}</button>`:''}
+        ${th?`<button class="theme-switch" style="background:rgba(255,255,255,.18);color:#fff" onclick="changeTheme()">${th.ico} ${rank.name} · Lv${rank.level}</button>`:''}
       </div>
       <div class="silo-stage">
         <div class="silo-glow" style="opacity:${(pct/100*0.9+0.1).toFixed(2)}"></div>
@@ -788,9 +850,9 @@ function renderChild(){
       </div>
       <div class="reveal-label">${revealed?revealLabel:milestoneText(th,pct)}</div>
       <div class="xpbar-wrap">
-        <div class="xpbar-top"><span>${xp} ⭐</span><span>Hedef ${state.season.goal}</span></div>
+        <div class="xpbar-top"><span>${xp} ⭐${streak>=2?` &nbsp;<b style="color:#FFD166">🔥 ${streak} gün</b>`:''}</span><span>Hedef ${state.season.goal}</span></div>
         <div class="xpbar" style="position:relative;overflow:visible"><div class="xpbar-fill" style="width:${pct}%"></div>${cpMarks}</div>
-        <div class="pct-big">%${pct} tamamlandı · Karne günü 26 Haziran</div>
+        <div class="pct-big">%${pct} · ${rank.next?`Lv${rank.level+1} rütbesine ${rank.next-xp} ⭐`:'en üst rütbe 🏆'}</div>
         ${cpList}
       </div>
     </div>
@@ -812,7 +874,7 @@ function setChildTab(t){
 }
 function renderChildContent(){
   const c = document.getElementById("childContent");
-  if(childTab==="board"){ c.innerHTML = leaderboardHTML(); return; }
+  if(childTab==="board"){ c.innerHTML = leaderboardHTML() + badgesHTML(session.id); return; }
   const list = TASKS.filter(t=> childTab==="week" ? t.type==="weekly" : t.type==="daily");
   if(childTab==="today"){
     const mine = (state.customTasks||[]).filter(c=>c.childId===session.id && c.status==="active").map(customAsTask);
@@ -980,6 +1042,16 @@ function showAiReject(note){
   }
   w.innerHTML="🤖 "+note+"<br><b style='display:block;margin-top:6px'>Bugün öğrendiğin YENİ bir şeyi yaz ve tekrar dene.</b>";
 }
+/* gorsel kutlama: konfeti */
+function fireConfetti(){
+  const w=document.createElement("div"); w.className="confetti-wrap";
+  const cols=["#FF7A18","#FFD166","#6C2BD9","#2E7D32","#00E5FF","#FF3DCB"];
+  for(let i=0;i<34;i++){ const p=document.createElement("div"); p.className="confetti";
+    p.style.left=(Math.random()*100).toFixed(1)+"%"; p.style.background=cols[i%cols.length];
+    p.style.animationDelay=(Math.random()*0.5).toFixed(2)+"s"; w.appendChild(p); }
+  document.body.appendChild(w);
+  setTimeout(()=>w.remove(), 2800);
+}
 /* AI begendi: otomatik tamamlandi, kutlama */
 function showCelebrate(note, xp){
   showModal(`
@@ -990,6 +1062,7 @@ function showCelebrate(note, xp){
       <button class="btn-primary" style="width:100%" onclick="closeModal()">Süper! 🚀</button>
     </div>
   `);
+  fireConfetti();
 }
 
 /* ara odule ulasinca anlik kutlama (her checkpoint icin bir kez, localStorage ile) */
@@ -1011,6 +1084,7 @@ function checkCheckpointCelebration(){
       <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Aileden ödülünü iste!</div>
       <button class="btn-primary" style="width:100%" onclick="closeModal()">Yaşasın! 🥳</button>
     </div>`);
+  fireConfetti();
   try{ localStorage.setItem("gp_cp_seen", JSON.stringify(seen.concat(fresh.map(x=>x.id)))); }catch(e){}
 }
 
