@@ -708,7 +708,8 @@ function enterApp(){
   if(session.role==="child") applyTheme(themeOf(session)); else resetTheme();
   renderApp();
   startAutoRefresh();
-  if(session.role==="child") setTimeout(checkCheckpointCelebration, 500);
+  setTimeout(showAnnouncements, 500);
+  if(session.role==="child") setTimeout(checkCheckpointCelebration, 1100);
 }
 function logout(){ stopAutoRefresh(); if(session) clearSavedToken(session.id); resetTheme(); session=null; authToken=null; pinTarget=null; pinDraft=""; document.getElementById("wizardMount").innerHTML=""; document.getElementById("appBody").innerHTML=""; document.getElementById("appView").classList.add("hidden"); document.getElementById("loginView").classList.remove("hidden"); renderLogin(); }
 
@@ -1042,6 +1043,46 @@ function showAiReject(note){
   }
   w.innerHTML="🤖 "+note+"<br><b style='display:block;margin-top:6px'>Bugün öğrendiğin YENİ bir şeyi yaz ve tekrar dene.</b>";
 }
+/* ======================= DUYURULAR (yenilikler) =======================
+   Yeni ozellik eklenince buraya bir kayit ekle. audience: child | parent | all.
+   Cocuga tema botu diliyle, aileye bilgilendirici; her kullaniciya bir kez. */
+const ANNOUNCEMENTS = [
+  { id:"2026-06-03-motivasyon", audience:"child", title:"Maceran büyüdü!",
+    items:["🔥 Her gün üst üste görev yap, SERİNİ büyüt! Sakın bozma.",
+           "⭐ Topladığın yıldızlar seni yeni RÜTBELERE çıkarıyor",
+           "🏅 Sıralama sekmesine bak, ROZETLER seni bekliyor",
+           "🎯 Ailen sana özel ara ödüller koyabilir, barında görünür"] },
+  { id:"2026-06-03-aile", audience:"parent", emoji:"📢", title:"Portala yenilikler",
+    items:["🎯 Çocuğunuza ara ödül hedefleri koyabilirsiniz (örn: 1000 ⭐ → sinema)",
+           "💬 Çocuğun botla yaptığı öğrenme sohbetlerini görebilirsiniz (kontrol için)",
+           "🔔 Onay bekleyen görevler için bildirim rozeti",
+           "🏆 Tüm çocukların sıralaması ve istatistikleri"] },
+];
+function showAnnouncements(){
+  if(!session) return;
+  if(document.getElementById("modalMount").innerHTML) return;   // baska modal varsa bekle
+  const aud = session.role==="child" ? "child" : "parent";
+  let seen=[]; try{ seen=JSON.parse(localStorage.getItem("gp_seen_announce")||"[]"); }catch(e){}
+  const key = a => a.id+"_"+session.id;
+  const pending = ANNOUNCEMENTS.filter(a=>(a.audience===aud||a.audience==="all") && !seen.includes(key(a)));
+  if(!pending.length) return;
+  const a = pending[0];
+  const th = themeOf(session);
+  const bot = (session.role==="child" && th) ? th.bot : null;
+  showModal(`
+    <div style="text-align:center">
+      ${bot ? `<div style="font-size:50px;animation:bob 2.2s ease-in-out infinite">${bot.ico}</div>
+               <div style="font-weight:800;font-size:13px;letter-spacing:1px;color:${th.colors.primary};margin-bottom:4px">${bot.name}</div>`
+            : `<div style="font-size:46px">${a.emoji||"📢"}</div>`}
+      <h3 style="margin:4px 0 2px">${a.title}</h3>
+    </div>
+    <div style="margin:14px 0">${a.items.map(i=>`<div style="padding:9px 12px;background:var(--line);border-radius:10px;margin-bottom:7px;font-size:14px;line-height:1.4">${i}</div>`).join("")}</div>
+    <button class="btn-primary" style="width:100%" onclick="closeModal()">${session.role==="child"?"Süper, anladım! 🚀":"Tamam"}</button>
+  `);
+  seen.push(key(a));
+  try{ localStorage.setItem("gp_seen_announce", JSON.stringify(seen)); }catch(e){}
+}
+
 /* gorsel kutlama: konfeti */
 function fireConfetti(){
   const w=document.createElement("div"); w.className="confetti-wrap";
