@@ -75,6 +75,16 @@ CREATE TABLE checkpoints (
 );
 CREATE INDEX idx_cp_child ON checkpoints(child_id, status);
 
+-- Ogrenme sohbeti loglari (ebeveyn/admin kontrolu icin tam diyalog)
+CREATE TABLE chat_logs (
+  id        TEXT PRIMARY KEY,
+  child_id  TEXT NOT NULL,
+  messages  TEXT NOT NULL,        -- JSON [{role,content}] tam diyalog
+  result    TEXT NOT NULL,        -- pass | fail
+  ts        INTEGER NOT NULL
+);
+CREATE INDEX idx_chatlog_child ON chat_logs(child_id, ts);
+
 -- Kazanilan hediye/odul kayitlari (metrics + log)
 CREATE TABLE rewards_log (
   id         TEXT PRIMARY KEY,

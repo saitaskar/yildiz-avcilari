@@ -472,7 +472,7 @@ const PRIZE_LABEL = {switch:"Nintendo Switch Lite 🎉"};
 const API = "/api";
 let authToken = null;     // login sonrasi HMAC token (bellekte; her acilista login)
 let loginUsers = [];      // login ekrani icin (PIN'siz isim listesi)
-let state = {season:null, users:[], completions:[], customTasks:[], checkpoints:[]};
+let state = {season:null, users:[], completions:[], customTasks:[], checkpoints:[], chatLogs:[]};
 let session = null;       // current user object
 let pinDraft = "";
 let pinTarget = null;     // user being authenticated
@@ -490,7 +490,7 @@ async function api(path, opts={}){
 }
 async function refreshState(){
   const d = await api("/state");
-  state = { season:d.season, users:d.users, completions:d.completions, customTasks:d.customTasks||[], checkpoints:d.checkpoints||[] };
+  state = { season:d.season, users:d.users, completions:d.completions, customTasks:d.customTasks||[], checkpoints:d.checkpoints||[], chatLogs:d.chatLogs||[] };
   const me = d.users.find(u=>u.id===session.id); if(me) session = me;  // tema vb. guncel
 }
 function user(id){ return state.users.find(u=>u.id===id); }
@@ -591,7 +591,7 @@ async function quickLogin(id){
   try{
     const d = await api("/state");          // token gecerliyse me doner
     session = d.me;
-    state = { season:d.season, users:d.users, completions:d.completions, customTasks:d.customTasks||[], checkpoints:d.checkpoints||[] };
+    state = { season:d.season, users:d.users, completions:d.completions, customTasks:d.customTasks||[], checkpoints:d.checkpoints||[], chatLogs:d.chatLogs||[] };
     saveToken(id, authToken);               // suresini tazele
     enterApp();
   }catch(e){
@@ -1111,6 +1111,7 @@ function renderApprover(){
       ${activeCustomFor(session.kids)}
       <button class="btn-primary" style="width:100%;margin-top:6px" onclick="openCustomTaskForm()">➕ Yeni ekstra görev</button>
     </div>
+    ${chatLogsCard()}
   `;
 }
 function checkpointListFor(kidIds){
@@ -1160,6 +1161,34 @@ async function checkpointGiven(id){
 async function checkpointCancel(id){
   if(!confirm("Bu ara ödül iptal edilsin mi?")) return;
   try{ await api("/checkpoint-cancel",{method:"POST",body:{id}}); await refreshState(); toast("İptal edildi"); renderApp(); }catch(e){ toast("Hata: "+e.message); }
+}
+/* ogrenme sohbeti loglari (ebeveyn/admin kontrolu) */
+function chatLogsCard(){
+  const logs=state.chatLogs||[];
+  return `<div class="card"><h2>💬 Öğrenme Sohbetleri</h2>
+    <div class="sub">Çocukların botla yaptığı "yeni bir şey öğren" konuşmaları (kontrol için).</div>
+    ${logs.length ? logs.map(l=>{
+      const ch=user(l.childId);
+      const d=new Date(l.ts).toLocaleString("tr-TR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+      return `<div class="task" style="margin-bottom:8px"><div class="t-ico">${ch?ch.av:'💬'}</div>
+        <div class="t-body"><div class="t-title">${ch?ch.name:l.childId}</div>
+          <div class="t-meta"><span class="chip ${l.result==='pass'?'done':'pending'}">${l.result==='pass'?'✓ geçti':'yetersiz'}</span><span class="chip">${d}</span></div></div>
+        <button class="btn-do" onclick="showChatLog('${l.id}')">Gör</button></div>`;
+    }).join("") : `<div class="empty"><span class="e">💬</span>Henüz öğrenme sohbeti yok.</div>`}
+  </div>`;
+}
+function showChatLog(id){
+  const l=(state.chatLogs||[]).find(x=>x.id===id); if(!l) return;
+  const ch=user(l.childId);
+  const bub=(l.messages||[]).map(m=> m.role==="assistant"
+    ? `<div class="chat-bubble bot">🤖 ${m.content}</div>`
+    : `<div class="chat-bubble me">${m.content}</div>`).join("");
+  showModal(`
+    <h3>💬 ${ch?ch.name:''}</h3>
+    <div class="msub">${l.result==='pass'?'✓ Bot geçerli buldu':'Bot yetersiz buldu'} · ${new Date(l.ts).toLocaleString("tr-TR")}</div>
+    <div class="chat-msgs" style="max-height:55vh">${bub}</div>
+    <button class="btn-primary" style="width:100%;margin-top:10px" onclick="closeModal()">Kapat</button>
+  `);
 }
 function activeCustomFor(kidIds){
   const list=(state.customTasks||[]).filter(c=>kidIds.includes(c.childId) && c.status==="active");
@@ -1302,6 +1331,7 @@ function renderAdmin(){
         return `<div class="kv"><span>${u.av} ${u.name}</span><b>${userXP(u.id)} ⭐ · ${done} görev${pend?' · '+pend+' onayda':''}</b></div>`;
       }).join("")}
     </div>
+    ${chatLogsCard()}
     <div class="card">
       <h2>Görev kataloğu (${TASKS.length})</h2>
       <div class="sub">Faz 2'de düzenlenebilir olacak.</div>

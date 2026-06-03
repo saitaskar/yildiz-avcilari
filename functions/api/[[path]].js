@@ -187,7 +187,19 @@ async function getState(env, me){
   if(me.role==="admin"){
     rewards = (await env.DB.prepare("SELECT * FROM rewards_log ORDER BY ts DESC").all()).results||[];
   }
-  return { season, users, completions, customTasks, checkpoints, rewards, me: safeUser(me) };
+  // ogrenme sohbeti loglari (parental control): admin tum, approver kendi cocuklari
+  let chatLogs = [];
+  if(me.role==="admin"){
+    chatLogs = (await env.DB.prepare("SELECT * FROM chat_logs ORDER BY ts DESC LIMIT 60").all()).results||[];
+  }else if(me.role==="approver"){
+    const kids = me.kids?JSON.parse(me.kids):[];
+    if(kids.length){
+      const ph = kids.map(()=>"?").join(",");
+      chatLogs = (await env.DB.prepare("SELECT * FROM chat_logs WHERE child_id IN ("+ph+") ORDER BY ts DESC LIMIT 60").bind(...kids).all()).results||[];
+    }
+  }
+  chatLogs = chatLogs.map(l=>({ id:l.id, childId:l.child_id, messages:JSON.parse(l.messages||"[]"), result:l.result, ts:l.ts }));
+  return { season, users, completions, customTasks, checkpoints, rewards, chatLogs, me: safeUser(me) };
 }
 
 /* ====================== ROUTER ====================== */
@@ -270,6 +282,11 @@ export async function onRequest(context){
         .map(m=>({role:m.role, content:String(m.content).slice(0,1000)})).slice(-12);
       const childTurns = clean.filter(m=>m.role==="user").length;
       const ev = await aiChat(env, clean, me.age, body.botName||"rehber", body.themeMood||"", childTurns);
+      const logChat = async (result) => {
+        const msgs = clean.concat([{role:"assistant", content:ev.reply}]);
+        await env.DB.prepare("INSERT INTO chat_logs (id,child_id,messages,result,ts) VALUES (?,?,?,?,?)")
+          .bind("cl_"+Date.now()+"_"+Math.floor(Math.random()*1e6), me.id, JSON.stringify(msgs).slice(0,9000), result, Date.now()).run();
+      };
       if(ev.action==="pass"){
         const id = "c_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
         const proof = clean.filter(m=>m.role==="user").map(m=>m.content).join(" / ").slice(0,500);
@@ -277,10 +294,11 @@ export async function onRequest(context){
           "INSERT INTO completions (id,user_id,task_id,date,week,ts,status,proof_text,proof_photo_key,ai_ok,ai_note,approver_id) "+
           "VALUES (?,?,?,?,?,?,'approved',?,NULL,1,?,'ai')"
         ).bind(id, me.id, "ogren", date, week, Date.now(), proof, ev.reply).run();
+        await logChat("pass");
         await checkReward(env, me.id); await checkCheckpoints(env, me.id);   // hedef + ara odul kontrolu
         return json({ reply:ev.reply, done:true, passed:true });
       }
-      if(ev.action==="fail") return json({ reply:ev.reply, done:true, passed:false });
+      if(ev.action==="fail"){ await logChat("fail"); return json({ reply:ev.reply, done:true, passed:false }); }
       return json({ reply:ev.reply, done:false });
     }
 
