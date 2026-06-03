@@ -46,6 +46,7 @@
   .topbar .who{font-size:13px;opacity:.92;display:flex;align-items:center;gap:10px;}
   .topbar .who b{font-weight:700;}
   .btn-logout{background:rgba(255,255,255,.18);color:#fff;border-radius:12px;padding:7px 12px;font-size:13px;font-weight:600;}
+  .notif-badge{background:#FF3B30;color:#fff;border-radius:20px;padding:4px 10px;font-size:12px;font-weight:800;}
   .btn-logout:active{background:rgba(255,255,255,.3);}
 
   .wrap{max-width:760px;margin:0 auto;padding:18px 16px 80px;}
@@ -262,6 +263,7 @@
   <div class="topbar">
     <div class="brand">🌟 <span id="brandTop">Yıldız Avcıları</span></div>
     <div class="who">
+      <span id="notifBadge" class="notif-badge hidden"></span>
       <span id="whoLabel"></span>
       <button class="btn-logout" onclick="manualRefresh()" title="Yenile">🔄</button>
       <button class="btn-logout" onclick="logout()">Çıkış</button>
@@ -734,6 +736,14 @@ function renderApp(){
   if(session.role==="child") renderChild();
   else if(session.role==="approver") renderApprover();
   else renderAdmin();
+  updateNotifBadge();
+}
+function updateNotifBadge(){
+  const b=document.getElementById("notifBadge"); if(!b||!session) return;
+  let n=0;
+  if(session.role==="approver") n=pendingForApprover(session).length;
+  else if(session.role==="admin") n=state.completions.filter(c=>c.status==="pending").length;
+  if(n>0){ b.textContent="🔔 "+n; b.classList.remove("hidden"); } else b.classList.add("hidden");
 }
 
 /* ======================= CHILD VIEW ======================= */
