@@ -37,6 +37,19 @@ async function checkReward(env, userId){
   await env.DB.prepare("INSERT INTO rewards_log (id,user_id,season_id,prize,xp_at_win,ts) VALUES (?,?,?,?,?,?)")
     .bind("rw_"+Date.now()+"_"+Math.floor(Math.random()*1e6), userId, s.id, s.prize, xp, Date.now()).run();
 }
+/* cocugun XP'si bir ara odul esigini gectiyse 'reached' isaretle (idempotent) */
+async function checkCheckpoints(env, userId){
+  const u = await env.DB.prepare("SELECT role FROM users WHERE id=?").bind(userId).first();
+  if(!u || u.role!=="child") return;
+  const pend = (await env.DB.prepare("SELECT * FROM checkpoints WHERE child_id=? AND status='pending'").bind(userId).all()).results||[];
+  if(!pend.length) return;
+  const xp = await computeXP(env, userId);
+  for(const cp of pend){
+    if(xp >= cp.threshold){
+      await env.DB.prepare("UPDATE checkpoints SET status='reached', reached_ts=? WHERE id=?").bind(Date.now(), cp.id).run();
+    }
+  }
+}
 
 /* ---------- yardimcilar ---------- */
 const json = (data, status=200) =>
@@ -168,11 +181,13 @@ async function getState(env, me){
   }));
   const ctRs = await env.DB.prepare("SELECT * FROM custom_tasks WHERE status IN ('active','done')").all();
   const customTasks = (ctRs.results||[]).map(c=>({ id:c.id, childId:c.child_id, title:c.title, emoji:c.emoji, xp:c.xp, by:c.created_by, status:c.status }));
+  const cpRs = await env.DB.prepare("SELECT * FROM checkpoints WHERE status!='cancelled' ORDER BY threshold").all();
+  const checkpoints = (cpRs.results||[]).map(c=>({ id:c.id, childId:c.child_id, threshold:c.threshold, reward:c.reward, status:c.status, by:c.created_by }));
   let rewards = null;
   if(me.role==="admin"){
     rewards = (await env.DB.prepare("SELECT * FROM rewards_log ORDER BY ts DESC").all()).results||[];
   }
-  return { season, users, completions, customTasks, rewards, me: safeUser(me) };
+  return { season, users, completions, customTasks, checkpoints, rewards, me: safeUser(me) };
 }
 
 /* ====================== ROUTER ====================== */
@@ -262,7 +277,7 @@ export async function onRequest(context){
           "INSERT INTO completions (id,user_id,task_id,date,week,ts,status,proof_text,proof_photo_key,ai_ok,ai_note,approver_id) "+
           "VALUES (?,?,?,?,?,?,'approved',?,NULL,1,?,'ai')"
         ).bind(id, me.id, "ogren", date, week, Date.now(), proof, ev.reply).run();
-        await checkReward(env, me.id);   // hedefe ulasti mi?
+        await checkReward(env, me.id); await checkCheckpoints(env, me.id);   // hedef + ara odul kontrolu
         return json({ reply:ev.reply, done:true, passed:true });
       }
       if(ev.action==="fail") return json({ reply:ev.reply, done:true, passed:false });
@@ -287,7 +302,7 @@ export async function onRequest(context){
       if(decision==="approved" && String(comp.task_id).startsWith("ct_")){
         await env.DB.prepare("UPDATE custom_tasks SET status='done' WHERE id=?").bind(comp.task_id).run();
       }
-      if(decision==="approved") await checkReward(env, comp.user_id);   // hedefe ulasti mi?
+      if(decision==="approved"){ await checkReward(env, comp.user_id); await checkCheckpoints(env, comp.user_id); }
       return json({ ok:true });
     }
 
@@ -317,6 +332,38 @@ export async function onRequest(context){
         if(!kids.includes(ct.child_id)) return bad("Yetkisiz", 403);
       }
       await env.DB.prepare("UPDATE custom_tasks SET status='cancelled' WHERE id=?").bind(body.id).run();
+      return json({ ok:true });
+    }
+
+    /* --- ebeveyn/admin: ara odul checkpoint ekle --- */
+    if(route==="checkpoint" && method==="POST"){
+      if(me.role!=="approver" && me.role!=="admin") return bad("Yetkisiz", 403);
+      const { childId, threshold, reward } = body;
+      if(!childId || !reward || !String(reward).trim()) return bad("Çocuk ve ödül adı gerekli");
+      const th = parseInt(threshold);
+      if(!th || th<1) return bad("Geçerli bir yıldız eşiği gir");
+      if(me.role==="approver"){
+        const kids = me.kids?JSON.parse(me.kids):[];
+        if(!kids.includes(childId)) return bad("Bu çocuk sizin değil", 403);
+      }
+      const id = "cp_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
+      await env.DB.prepare("INSERT INTO checkpoints (id,child_id,created_by,threshold,reward,status,ts) VALUES (?,?,?,?,?,'pending',?)")
+        .bind(id, childId, me.id, th, String(reward).trim().slice(0,60), Date.now()).run();
+      await checkCheckpoints(env, childId);   // dusuk esikse hemen ulasilmis olabilir
+      return json({ ok:true, id });
+    }
+
+    /* --- ebeveyn/admin: checkpoint iptal / verildi --- */
+    if((route==="checkpoint-cancel" || route==="checkpoint-given") && method==="POST"){
+      if(me.role!=="approver" && me.role!=="admin") return bad("Yetkisiz", 403);
+      const cp = await env.DB.prepare("SELECT * FROM checkpoints WHERE id=?").bind(body.id).first();
+      if(!cp) return bad("Kayıt yok", 404);
+      if(me.role==="approver"){
+        const kids = me.kids?JSON.parse(me.kids):[];
+        if(!kids.includes(cp.child_id)) return bad("Yetkisiz", 403);
+      }
+      const newStatus = route==="checkpoint-given" ? "given" : "cancelled";
+      await env.DB.prepare("UPDATE checkpoints SET status=? WHERE id=?").bind(newStatus, body.id).run();
       return json({ ok:true });
     }
 

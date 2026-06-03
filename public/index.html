@@ -219,6 +219,13 @@
   /* emoji secici (ekstra gorev) */
   .emoji-pick{font-size:22px;background:#fff;border:2px solid var(--line);border-radius:12px;width:46px;height:46px;cursor:pointer;line-height:1;}
   .emoji-pick.sel{border-color:var(--primary);background:#F3ECFF;}
+
+  /* ara odul checkpoint'leri (hero kart icinde) */
+  .cp-mark{position:absolute;top:-9px;transform:translateX(-50%);font-size:14px;filter:grayscale(1);opacity:.5;pointer-events:none;}
+  .cp-mark.on{filter:none;opacity:1;}
+  .cp-list{margin-top:12px;display:flex;flex-direction:column;gap:6px;}
+  .cp-item{display:flex;justify-content:space-between;gap:10px;font-size:13px;background:rgba(255,255,255,.1);border-radius:10px;padding:7px 12px;color:rgba(255,255,255,.72);}
+  .cp-item.on{background:rgba(255,209,102,.22);color:#FFE9B0;font-weight:700;}
 </style>
 </head>
 <body>
@@ -461,7 +468,7 @@ const PRIZE_LABEL = {switch:"Nintendo Switch Lite 🎉"};
 const API = "/api";
 let authToken = null;     // login sonrasi HMAC token (bellekte; her acilista login)
 let loginUsers = [];      // login ekrani icin (PIN'siz isim listesi)
-let state = {season:null, users:[], completions:[], customTasks:[]};
+let state = {season:null, users:[], completions:[], customTasks:[], checkpoints:[]};
 let session = null;       // current user object
 let pinDraft = "";
 let pinTarget = null;     // user being authenticated
@@ -479,7 +486,7 @@ async function api(path, opts={}){
 }
 async function refreshState(){
   const d = await api("/state");
-  state = { season:d.season, users:d.users, completions:d.completions, customTasks:d.customTasks||[] };
+  state = { season:d.season, users:d.users, completions:d.completions, customTasks:d.customTasks||[], checkpoints:d.checkpoints||[] };
   const me = d.users.find(u=>u.id===session.id); if(me) session = me;  // tema vb. guncel
 }
 function user(id){ return state.users.find(u=>u.id===id); }
@@ -580,7 +587,7 @@ async function quickLogin(id){
   try{
     const d = await api("/state");          // token gecerliyse me doner
     session = d.me;
-    state = { season:d.season, users:d.users, completions:d.completions, customTasks:d.customTasks||[] };
+    state = { season:d.season, users:d.users, completions:d.completions, customTasks:d.customTasks||[], checkpoints:d.checkpoints||[] };
     saveToken(id, authToken);               // suresini tazele
     enterApp();
   }catch(e){
@@ -742,6 +749,17 @@ function renderChild(){
   const heroGrad = th ? th.cardGrad : "linear-gradient(160deg,#3A1D6E,#6C2BD9)";
   const prizeName = th ? th.prize : "Hediye Sandığı";
   const revealLabel = th ? th.revealLabel : PRIZE_LABEL[state.season.prize];
+  const myCps = (state.checkpoints||[]).filter(c=>c.childId===session.id).sort((a,b)=>a.threshold-b.threshold);
+  const cpMarks = myCps.map(c=>{
+    const left = Math.min(100, c.threshold/state.season.goal*100);
+    const on = (c.status==='reached'||c.status==='given');
+    return `<div class="cp-mark ${on?'on':''}" style="left:${left}%" title="${c.reward}">🎯</div>`;
+  }).join("");
+  const cpList = myCps.length ? `<div class="cp-list">${myCps.map(c=>{
+    const reached=(c.status==='reached'||c.status==='given');
+    const ic = c.status==='given'?'✅':(reached?'🎉':'🔒');
+    return `<div class="cp-item ${reached?'on':''}"><span>${ic} ${c.threshold} ⭐</span><span>${c.reward}</span></div>`;
+  }).join("")}</div>` : "";
 
   body.innerHTML = `
     <div class="card hero-card" style="background:${heroGrad}">
@@ -758,8 +776,9 @@ function renderChild(){
       <div class="reveal-label">${revealed?revealLabel:milestoneText(th,pct)}</div>
       <div class="xpbar-wrap">
         <div class="xpbar-top"><span>${xp} ⭐</span><span>Hedef ${state.season.goal}</span></div>
-        <div class="xpbar"><div class="xpbar-fill" style="width:${pct}%"></div></div>
+        <div class="xpbar" style="position:relative;overflow:visible"><div class="xpbar-fill" style="width:${pct}%"></div>${cpMarks}</div>
         <div class="pct-big">%${pct} tamamlandı · Karne günü 26 Haziran</div>
+        ${cpList}
       </div>
     </div>
 
@@ -827,18 +846,18 @@ function taskRow(task){
       <div class="t-action">${actionHTML}</div>
     </div>`;
 }
-function leaderboardHTML(){
+function leaderboardHTML(highlight){
+  highlight = highlight || [session.id];
   const kids = state.users.filter(u=>u.role==="child")
     .map(u=>({u, xp:userXP(u.id)}))
     .sort((a,b)=>b.xp-a.xp);
-  const max = Math.max(state.season.goal, ...kids.map(k=>k.xp), 1);
   return `<div class="card"><h2>Sıralama 🏆</h2><div class="sub">Dostça yarış. Herkes kendi hediyesini açıyor.</div>
     ${kids.map((k,i)=>`
       <div class="lb-row">
         <div class="lb-rank ${i===0?'gold':''}">${i===0?'🥇':(i+1)}</div>
         <div class="lb-av">${k.u.av}</div>
         <div class="lb-body">
-          <b>${k.u.name}</b>${k.u.id===session.id?' <span style="color:var(--primary);font-size:12px">(sen)</span>':''}
+          <b>${k.u.name}</b>${highlight.includes(k.u.id)?' <span style="color:var(--primary);font-size:12px">●</span>':''}
           <div class="lb-mini"><span style="width:${Math.min(100,k.xp/state.season.goal*100)}%"></span></div>
         </div>
         <div class="lb-xp">${k.xp}</div>
@@ -1039,9 +1058,12 @@ function renderApprover(){
       <div class="sub">${session.title} olarak ${session.kids.map(k=>user(k).name).join(", ")} için onay veriyorsun.</div>
       ${pend.length? pend.map(approveCard).join("") : `<div class="empty"><span class="e">🎉</span>Bekleyen onay yok. Hepsi temiz!</div>`}
     </div>
+    ${leaderboardHTML(session.kids)}
     <div class="card">
-      <h2>Çocukların durumu</h2>
-      ${session.kids.map(kidStatusRow).join("")}
+      <h2>🎯 Ara ödüller</h2>
+      <div class="sub">Çocuğa ara hedef koy; ulaşınca burada görünür, ödülü sen verirsin.</div>
+      ${checkpointListFor(session.kids)}
+      <button class="btn-primary" style="width:100%;margin-top:6px" onclick="openCheckpointForm()">🎯 Yeni ara ödül</button>
     </div>
     <div class="card">
       <h2>Ekstra görev ver</h2>
@@ -1050,6 +1072,54 @@ function renderApprover(){
       <button class="btn-primary" style="width:100%;margin-top:6px" onclick="openCustomTaskForm()">➕ Yeni ekstra görev</button>
     </div>
   `;
+}
+function checkpointListFor(kidIds){
+  const list=(state.checkpoints||[]).filter(c=>kidIds.includes(c.childId) && c.status!=="cancelled").sort((a,b)=>a.threshold-b.threshold);
+  if(!list.length) return "";
+  return list.map(c=>{
+    const ch=user(c.childId);
+    if(c.status==="reached"){
+      return `<div class="task waiting" style="margin-bottom:8px"><div class="t-ico">🎉</div>
+        <div class="t-body"><div class="t-title">${c.reward}</div>
+          <div class="t-meta"><span class="chip pending">${ch?ch.name:''} · ${c.threshold} ⭐'a ulaştı!</span></div></div>
+        <button class="btn-ok" style="flex:0 0 auto;padding:9px 14px" onclick="checkpointGiven('${c.id}')">Verildi ✓</button></div>`;
+    }
+    const ic = c.status==="given"?"✅":"🎯";
+    const note = c.status==="given"?"verildi":`hedef ${c.threshold} ⭐`;
+    return `<div class="task" style="margin-bottom:8px${c.status==='given'?';opacity:.6':''}"><div class="t-ico">${ic}</div>
+      <div class="t-body"><div class="t-title">${c.reward}</div>
+        <div class="t-meta"><span class="chip">${ch?ch.name:''}</span><span class="chip count">${note}</span></div></div>
+      ${c.status==="pending"?`<button class="btn-do" style="background:#fff;border:2px solid var(--red);color:var(--red)" onclick="checkpointCancel('${c.id}')">İptal</button>`:''}</div>`;
+  }).join("");
+}
+function openCheckpointForm(){
+  const ids = session.role==="admin" ? state.users.filter(u=>u.role==="child").map(u=>u.id) : session.kids;
+  const opts = ids.map(k=>{const u=user(k); return `<option value="${k}">${u?u.name:k}</option>`;}).join("");
+  showModal(`
+    <h3>🎯 Ara ödül ekle</h3>
+    <div class="msub">Çocuk bu yıldıza ulaşınca kazanacağı ödül</div>
+    <div class="field"><label>Kime?</label><select id="cpChild" style="width:100%;border:2px solid var(--line);border-radius:12px;padding:12px">${opts}</select></div>
+    <div class="field"><label>Kaç yıldızda?</label><input type="number" id="cpTh" value="500" min="1" max="5000"></div>
+    <div class="field"><label>Ödül</label><input type="text" id="cpReward" placeholder="Örn: Dondurma 🍦 / Film gecesi" maxlength="60"></div>
+    <div class="modal-actions"><button class="btn-ghost" onclick="closeModal()">Vazgeç</button><button class="btn-primary" onclick="submitCheckpoint()">Ekle</button></div>
+  `);
+}
+async function submitCheckpoint(){
+  const childId=document.getElementById("cpChild").value;
+  const threshold=parseInt(document.getElementById("cpTh").value)||0;
+  const reward=document.getElementById("cpReward").value.trim();
+  if(reward.length<2){ toast("Ödül adı yaz"); return; }
+  if(threshold<1){ toast("Yıldız eşiği gir"); return; }
+  const btn=document.querySelector(".modal .btn-primary"); if(btn){btn.disabled=true;btn.textContent="Ekleniyor...";}
+  try{ await api("/checkpoint",{method:"POST",body:{childId,threshold,reward}}); closeModal(); await refreshState(); toast("Ara ödül eklendi ✓"); renderApp(); }
+  catch(e){ if(btn){btn.disabled=false;btn.textContent="Ekle";} toast("Hata: "+e.message); }
+}
+async function checkpointGiven(id){
+  try{ await api("/checkpoint-given",{method:"POST",body:{id}}); await refreshState(); toast("Verildi ✓"); renderApp(); }catch(e){ toast("Hata: "+e.message); }
+}
+async function checkpointCancel(id){
+  if(!confirm("Bu ara ödül iptal edilsin mi?")) return;
+  try{ await api("/checkpoint-cancel",{method:"POST",body:{id}}); await refreshState(); toast("İptal edildi"); renderApp(); }catch(e){ toast("Hata: "+e.message); }
 }
 function activeCustomFor(kidIds){
   const list=(state.customTasks||[]).filter(c=>kidIds.includes(c.childId) && c.status==="active");
@@ -1162,6 +1232,12 @@ function renderAdmin(){
     <div class="card">
       <h2>Çocuklar</h2>
       ${state.users.filter(u=>u.role==="child").map(u=>kidStatusRow(u.id)).join("")}
+    </div>
+    <div class="card">
+      <h2>🎯 Ara ödüller</h2>
+      <div class="sub">Herhangi bir çocuğa ara hedef koy; ulaşınca burada görünür.</div>
+      ${checkpointListFor(state.users.filter(u=>u.role==="child").map(u=>u.id))}
+      <button class="btn-primary" style="width:100%;margin-top:6px" onclick="openCheckpointForm()">🎯 Yeni ara ödül</button>
     </div>
     <div class="card">
       <h2>🏆 Kazanılan Hediyeler</h2>

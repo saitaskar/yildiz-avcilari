@@ -62,6 +62,19 @@ CREATE TABLE custom_tasks (
 );
 CREATE INDEX idx_custom_child ON custom_tasks(child_id, status);
 
+-- Ara odul checkpoint'leri (aile/admin tanimlar; cocuk esige ulasinca reached)
+CREATE TABLE checkpoints (
+  id         TEXT PRIMARY KEY,
+  child_id   TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  threshold  INTEGER NOT NULL,     -- yildiz esigi
+  reward     TEXT NOT NULL,        -- odul adi (gorunur)
+  status     TEXT NOT NULL DEFAULT 'pending',  -- pending | reached | given | cancelled
+  reached_ts INTEGER,
+  ts         INTEGER NOT NULL
+);
+CREATE INDEX idx_cp_child ON checkpoints(child_id, status);
+
 -- Kazanilan hediye/odul kayitlari (metrics + log)
 CREATE TABLE rewards_log (
   id         TEXT PRIMARY KEY,
