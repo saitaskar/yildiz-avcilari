@@ -125,7 +125,7 @@
   .approve-head .av{width:34px;height:34px;border-radius:50%;background:#EDE4FF;display:flex;align-items:center;justify-content:center;font-size:18px;}
   .approve-head b{font-size:14px;}
   .approve-head small{color:var(--muted);font-size:12px;display:block;}
-  .proof-box{background:#FAF8FF;border-radius:12px;padding:10px 12px;font-size:14px;margin:8px 0;border:1px solid var(--line);}
+  .proof-box{background:var(--bg);border-radius:12px;padding:10px 12px;font-size:14px;margin:8px 0;border:1px solid var(--line);}
   .proof-box img{max-width:100%;border-radius:10px;margin-top:6px;display:block;}
   .ai-note{background:#EEF6FF;border-left:3px solid var(--blue);padding:8px 12px;border-radius:8px;font-size:13px;margin:8px 0;color:#1A4D8F;}
   .approve-actions{display:flex;gap:10px;margin-top:10px;}
@@ -146,7 +146,8 @@
 
   /* ---------- Modal ---------- */
   .modal-bg{position:fixed;inset:0;background:rgba(31,18,53,.55);z-index:100;display:flex;align-items:flex-end;justify-content:center;padding:0;}
-  .modal{background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:760px;padding:22px 20px 30px;animation:slideUp .25s ease;}
+  .modal{background:var(--card);color:var(--text);border-radius:22px 22px 0 0;width:100%;max-width:760px;padding:22px 20px 30px;animation:slideUp .25s ease;}
+  .modal input,.modal textarea,.modal select{background:var(--bg);color:var(--text);}
   @keyframes slideUp{from{transform:translateY(40px);opacity:.6;}to{transform:translateY(0);opacity:1;}}
   .modal h3{margin:0 0 4px;font-size:18px;}
   .modal .msub{color:var(--muted);font-size:13px;margin-bottom:14px;}
@@ -210,7 +211,7 @@
   /* ---------- LEARN CHAT ---------- */
   .chat-msgs{max-height:46vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:8px 2px;margin-bottom:10px;}
   .chat-bubble{padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.45;max-width:88%;word-wrap:break-word;}
-  .chat-bubble.bot{background:#F0ECFA;color:var(--text);align-self:flex-start;border-bottom-left-radius:4px;}
+  .chat-bubble.bot{background:var(--line);color:var(--text);align-self:flex-start;border-bottom-left-radius:4px;}
   .chat-bubble.me{background:var(--primary);color:#fff;align-self:flex-end;border-bottom-right-radius:4px;}
   .chat-input-row{display:flex;gap:8px;}
   .chat-input-row input{flex:1;border:2px solid var(--line);border-radius:12px;padding:12px;min-width:0;}
@@ -218,8 +219,8 @@
   .chat-input-row input:disabled{background:#F4F1FB;}
 
   /* emoji secici (ekstra gorev) */
-  .emoji-pick{font-size:22px;background:#fff;border:2px solid var(--line);border-radius:12px;width:46px;height:46px;cursor:pointer;line-height:1;}
-  .emoji-pick.sel{border-color:var(--primary);background:#F3ECFF;}
+  .emoji-pick{font-size:22px;background:var(--bg);border:2px solid var(--line);border-radius:12px;width:46px;height:46px;cursor:pointer;line-height:1;}
+  .emoji-pick.sel{border-color:var(--primary);background:var(--line);}
 
   /* ara odul checkpoint'leri (hero kart icinde) */
   .cp-tick{position:absolute;top:0;width:3px;height:100%;background:rgba(255,255,255,.55);transform:translateX(-50%);border-radius:2px;pointer-events:none;z-index:2;}
