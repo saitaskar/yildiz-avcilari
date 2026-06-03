@@ -26,7 +26,8 @@ Amaç: gerçek bir ödülü bedavadan vermek yerine, çocukların güzel alışk
 - **Yaşa göre içerik** — 8 yaş "günün hayvanı", 13 yaş "yapay zeka nasıl çalışır".
 - **Onay akışı** — çocuk kanıt gönderir, ebeveyn/teyze tek dokunuşla onaylar/reddeder, yıldız havuza düşer.
 - **Ekstra görevler** — ebeveynler çocuğa özel, tek seferlik görev tanımlayabilir.
-- **Hediye kaydı & metrikler** — admin panelinde kim ne kazandı, toplam yıldız ve görev sayısı izlenir.
+- **Ara ödül checkpoint'leri** — aile (ve admin) büyük ödüle giderken ara hedefler koyar (örn "1000 ⭐ → dondurma"). Çocuğun barında işaretli görünür; büyük ödül gizli kalır, ara ödüller görünür. Ulaşınca kutlama + ebeveyne "ödülü ver" bildirimi.
+- **Hediye kaydı & metrikler** — admin panelinde kim ne kazandı, toplam yıldız ve görev sayısı izlenir. Ebeveynler de tam sıralamayı görür.
 - **Dinamik siluet** — yıldız doldukça tema diline göre metin değişir ("Mühür çatlıyor", "Yapı %50 craft edildi").
 - **Dostça sıralama** — her çocuk kendi barını doldurur, ortak tablo motive eder.
 - **Güvenlik** — sunucu taraflı PIN doğrulama (HMAC token), brute-force kilidi, mahremiyet-minimal public uçlar, foto boyut limiti.
@@ -89,7 +90,7 @@ Demo seed girişleri: çocuklar `1111` / `2222` / `3333`, onaylayıcılar `1234`
 
 - [x] Faz 1 — Frontend prototip (tema motoru, sihirbaz, onay akışı, siluet)
 - [x] Faz 2 — Cloudflare backend (Pages Functions + D1 + R2), sunucu taraflı PIN auth, AI öğrenme sohbeti
-- [x] Ekstra görevler (ebeveyn tanımlı) + hediye kaydı & metrikler
+- [x] Ekstra görevler (ebeveyn tanımlı) + ara ödül checkpoint'leri + hediye kaydı & metrikler
 - [ ] Aylık sezon döngüsü (her ay yeni ödül)
 - [ ] Admin'den düzenlenebilir görev kataloğu
 - [ ] Bildirimler (görev zamanı, onay bekliyor)

@@ -221,7 +221,9 @@
   .emoji-pick.sel{border-color:var(--primary);background:#F3ECFF;}
 
   /* ara odul checkpoint'leri (hero kart icinde) */
-  .cp-mark{position:absolute;top:-9px;transform:translateX(-50%);font-size:14px;filter:grayscale(1);opacity:.5;pointer-events:none;}
+  .cp-tick{position:absolute;top:0;width:3px;height:100%;background:rgba(255,255,255,.55);transform:translateX(-50%);border-radius:2px;pointer-events:none;z-index:2;}
+  .cp-tick.on{background:#FFD166;box-shadow:0 0 7px rgba(255,209,102,.95);}
+  .cp-mark{position:absolute;top:-18px;transform:translateX(-50%);font-size:13px;filter:grayscale(1);opacity:.55;pointer-events:none;}
   .cp-mark.on{filter:none;opacity:1;}
   .cp-list{margin-top:12px;display:flex;flex-direction:column;gap:6px;}
   .cp-item{display:flex;justify-content:space-between;gap:10px;font-size:13px;background:rgba(255,255,255,.1);border-radius:10px;padding:7px 12px;color:rgba(255,255,255,.72);}
@@ -360,8 +362,8 @@ const THEMES = {
   },
   fantasy:{
     id:"fantasy", name:"Fantastik Diyarlar", cls:"Şövalye", ico:"⚔️",
-    colors:{"primary":"#D4A017","primary-dark":"#7A5C12","accent":"#2E7D32","bg":"#1A1410","card":"#2A2018","text":"#F3E9D2","muted":"#A8957A","line":"#3D2F22"},
-    cardGrad:"linear-gradient(135deg,#3A2A14,#1F3A1E)",
+    colors:{"primary":"#E5B53C","primary-dark":"#9A7416","accent":"#3FA34D","bg":"#181410","card":"#272018","text":"#F5ECD6","muted":"#B09D80","line":"#3D3324"},
+    cardGrad:"linear-gradient(150deg,#2C4220,#4A3517)",
     bot:{name:"Eldric", ico:"🧙"},
     intro:"Krallığın kayıp kutsal eseri bir mührün ardında saklı. Onu bulmak için niteliklerini her gün bileyen bir kahraman olmalısın.",
     story:"Krallığın kayıp kutsal eserini arayan bir şövalyesin. Siluet, parşömendeki gizemli mühür. Canavarlarla savaşmak için her gün statlarını geliştir.",
@@ -644,6 +646,7 @@ function enterApp(){
   if(session.role==="child") applyTheme(themeOf(session)); else resetTheme();
   renderApp();
   startAutoRefresh();
+  if(session.role==="child") setTimeout(checkCheckpointCelebration, 500);
 }
 function logout(){ stopAutoRefresh(); if(session) clearSavedToken(session.id); resetTheme(); session=null; authToken=null; pinTarget=null; pinDraft=""; document.getElementById("wizardMount").innerHTML=""; document.getElementById("appBody").innerHTML=""; document.getElementById("appView").classList.add("hidden"); document.getElementById("loginView").classList.remove("hidden"); renderLogin(); }
 
@@ -655,13 +658,13 @@ function startAutoRefresh(){
     if(!session) return;
     if(document.getElementById("modalMount").innerHTML) return;   // bir sey yaziyor/onayliyor olabilir
     if(document.getElementById("wizardMount").innerHTML) return;  // sihirbaz acik
-    try{ await refreshState(); renderApp(); }catch(e){}
+    try{ await refreshState(); renderApp(); if(session.role==="child") checkCheckpointCelebration(); }catch(e){}
   }, 90000);
 }
 function stopAutoRefresh(){ if(refreshTimer){ clearInterval(refreshTimer); refreshTimer=null; } }
 async function manualRefresh(){
   toast("Yenileniyor...");
-  try{ await refreshState(); renderApp(); toast("Güncellendi ✓"); }
+  try{ await refreshState(); renderApp(); toast("Güncellendi ✓"); if(session.role==="child") setTimeout(checkCheckpointCelebration, 300); }
   catch(e){ toast("Yenilenemedi"); }
 }
 
@@ -753,7 +756,7 @@ function renderChild(){
   const cpMarks = myCps.map(c=>{
     const left = Math.min(100, c.threshold/state.season.goal*100);
     const on = (c.status==='reached'||c.status==='given');
-    return `<div class="cp-mark ${on?'on':''}" style="left:${left}%" title="${c.reward}">🎯</div>`;
+    return `<div class="cp-tick ${on?'on':''}" style="left:${left}%"></div><div class="cp-mark ${on?'on':''}" style="left:${left}%" title="${c.reward}">🎯</div>`;
   }).join("");
   const cpList = myCps.length ? `<div class="cp-list">${myCps.map(c=>{
     const reached=(c.status==='reached'||c.status==='given');
@@ -977,6 +980,28 @@ function showCelebrate(note, xp){
       <button class="btn-primary" style="width:100%" onclick="closeModal()">Süper! 🚀</button>
     </div>
   `);
+}
+
+/* ara odule ulasinca anlik kutlama (her checkpoint icin bir kez, localStorage ile) */
+function checkCheckpointCelebration(){
+  if(!session || session.role!=="child") return;
+  if(document.getElementById("modalMount").innerHTML) return;   // baska modal aciksa bekle
+  const reached = (state.checkpoints||[]).filter(c=>c.childId===session.id && c.status==="reached");
+  if(!reached.length) return;
+  let seen=[]; try{ seen=JSON.parse(localStorage.getItem("gp_cp_seen")||"[]"); }catch(e){}
+  const fresh = reached.filter(c=>!seen.includes(c.id));
+  if(!fresh.length) return;
+  const c=fresh[0];
+  showModal(`
+    <div style="text-align:center;padding:6px 0">
+      <div style="font-size:58px;animation:bob 1.2s ease-in-out infinite">🎯</div>
+      <h3 style="margin:10px 0 2px">Ara ödülünü kazandın! 🎉</h3>
+      <div class="msub">${c.threshold} ⭐'a ulaştın</div>
+      <div class="ai-note" style="text-align:center;margin:14px 0;font-size:16px;font-weight:700">🎁 ${c.reward}</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Aileden ödülünü iste!</div>
+      <button class="btn-primary" style="width:100%" onclick="closeModal()">Yaşasın! 🥳</button>
+    </div>`);
+  try{ localStorage.setItem("gp_cp_seen", JSON.stringify(seen.concat(fresh.map(x=>x.id)))); }catch(e){}
 }
 
 /* ======================= OGRENME SOHBETI ======================= */

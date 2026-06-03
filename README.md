@@ -26,7 +26,8 @@ Built so that a real reward (a gift) isn't just handed over for free, but **earn
 - **Age-aware content** — age 8 gets "animal of the day", age 13 gets "how does AI work".
 - **Approval flow** — kid sends proof, parent/aunt approves or rejects with one tap, stars drop into the pool.
 - **Custom tasks** — parents can define their own one-off tasks for a kid.
-- **Rewards log & metrics** — admin dashboard tracks who earned what, total stars and task counts.
+- **Milestone checkpoints** — family (and admin) set intermediate reward targets on the way to the big prize (e.g. "1000 ⭐ → ice cream"). Markers show on the kid's bar; the big prize stays hidden but checkpoints are visible. Reaching one triggers a celebration and a "give the reward" note to the parent.
+- **Rewards log & metrics** — admin dashboard tracks who earned what, total stars and task counts. Parents see the full leaderboard too.
 - **Dynamic silhouette** — as stars fill, milestone text changes in theme language ("The seal is cracking", "Structure 50% crafted").
 - **Friendly leaderboard** — each kid fills their own bar; a shared board keeps it motivating.
 - **Security** — server-side PIN auth (HMAC tokens), brute-force lockout, privacy-minimal public endpoints, photo size limits.
@@ -98,7 +99,7 @@ Demo seed logins: children `1111` / `2222` / `3333`, approvers `1234`, admin `00
 
 - [x] Phase 1 — Frontend prototype (theme engine, wizard, approval flow, silhouette)
 - [x] Phase 2 — Cloudflare backend (Pages Functions + D1 + R2), server-side PIN auth, AI learning chat
-- [x] Custom tasks (parent-defined) + rewards log & metrics
+- [x] Custom tasks (parent-defined) + milestone checkpoints + rewards log & metrics
 - [ ] Monthly season cycle (new reward each month)
 - [ ] Admin-editable task catalog
 - [ ] Notifications (task due, awaiting approval)

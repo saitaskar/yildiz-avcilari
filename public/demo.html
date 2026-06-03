@@ -93,6 +93,12 @@
   .bubble.me{background:var(--primary);color:#fff;border-bottom-right-radius:4px;margin-left:auto;}
   .bubble.win{background:linear-gradient(90deg,#2E7D32,#43A047);color:#fff;text-align:center;max-width:100%;font-weight:700;}
 
+  .cp-demo-bar{position:relative;height:16px;background:rgba(255,255,255,.12);border-radius:10px;margin:6px 0 22px;}
+  .cp-demo-fill{position:absolute;height:100%;width:42%;background:linear-gradient(90deg,var(--accent),#FFD166);border-radius:10px;}
+  .cp-demo-tick{position:absolute;top:0;width:3px;height:100%;background:#FFD166;box-shadow:0 0 7px rgba(255,209,102,.95);transform:translateX(-50%);border-radius:2px;}
+  .cp-demo-tick.off{background:rgba(255,255,255,.5);box-shadow:none;}
+  .cp-demo-item{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:7px;text-align:left;}
+
   footer{text-align:center;padding:40px 20px 60px;color:var(--muted);border-top:1px solid var(--line);margin-top:20px;}
   footer a{color:var(--accent);text-decoration:none;font-weight:700;}
   .pill{display:inline-block;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--muted);margin:3px;}
@@ -124,6 +130,9 @@ const T = {
     revSub:"Ödül başta bir gölge. Yıldız topladıkça netleşir. Kaydırıcıyı oynat, ödülün nasıl açıldığını gör.",
     miles:[[0,"Gizemli ödül..."],[25,"Bir şeyler parıldıyor ✨"],[50,"Yarı yarıya yaklaştın!"],[75,"Neredeyse oldu..."],[100,"Büyük ödülü kazandın! 🎉"]],
     revHint:"Karne günü %100'e ulaşınca büyük ödül açılır.",
+    cpLead:"Ara Ödüller", cpH:"Yolda küçük hedefler",
+    cpSub:"Aile, büyük ödüle giderken çocuğa ara ödül noktaları koyar. Çocuk yıldız barında bunları görür, ulaşınca kutlama olur. Büyük ödül yine gizli kalır.",
+    cpItems:[["🎯","500 ⭐","Sinema gecesi"],["🎯","1000 ⭐","Yeni kitap"],["🎯","1500 ⭐","Kablosuz kulaklık"]],
     onbLead:"İlk Giriş", onbH:"Maceraya başlangıç",
     onbSub:"Çocuk ilk girişte sinematik bir karşılama görür, bir sınıf seçer ve kılavuz bot sistemi oyun gibi anlatır.",
     cineBadge:"BÜYÜK KARNE SEZONU", cineH:"Hedefe giden yolda<br>kaderini seç...",
@@ -174,6 +183,9 @@ const T = {
     revSub:"The reward starts as a shadow. It sharpens as stars are collected. Drag the slider to see how it unlocks.",
     miles:[[0,"Mystery reward..."],[25,"Something is glowing ✨"],[50,"Halfway there!"],[75,"Almost there..."],[100,"You won the big reward! 🎉"]],
     revHint:"On report-card day, reaching 100% unlocks the big reward.",
+    cpLead:"Milestone Rewards", cpH:"Small goals along the way",
+    cpSub:"On the way to the big prize, the family sets intermediate reward points. The kid sees them on the star bar; reaching one triggers a celebration. The big prize stays hidden.",
+    cpItems:[["🎯","500 ⭐","Movie night"],["🎯","1000 ⭐","New book"],["🎯","1500 ⭐","Wireless headphones"]],
     onbLead:"First Login", onbH:"Start of the adventure",
     onbSub:"On first login the kid sees a cinematic welcome, picks a class, and a guide bot explains the system like a game tutorial.",
     cineBadge:"THE GREAT REPORT-CARD SEASON", cineH:"On the road to the goal,<br>choose your destiny...",
@@ -243,6 +255,20 @@ function render(){
         <div class="xpbar"><div class="xpbar-fill" id="bar" style="width:50%"></div></div>
         <div class="slider-row"><span id="pctLabel">%50</span><input type="range" id="slider" min="0" max="100" value="50"><span>🎁</span></div>
         <div class="silo-hint">${t.revHint}</div>
+      </div>
+    </div>
+
+    <div class="section wrap">
+      <div class="lead">${t.cpLead}</div><div class="h2">${t.cpH}</div>
+      <p class="sub">${t.cpSub}</p>
+      <div class="silo-card" style="background:var(--card)">
+        <div class="cp-demo-bar">
+          <div class="cp-demo-fill"></div>
+          <div class="cp-demo-tick" style="left:20%"></div>
+          <div class="cp-demo-tick" style="left:40%"></div>
+          <div class="cp-demo-tick off" style="left:60%"></div>
+        </div>
+        ${t.cpItems.map(c=>`<div class="cp-demo-item"><span>${c[0]} ${c[1]}</span><span>${c[2]}</span></div>`).join("")}
       </div>
     </div>
 
