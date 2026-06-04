@@ -114,6 +114,7 @@
   .chip.done{background:#E6F4EA;color:var(--green);}
   .chip.pending{background:#FFF8E1;color:#B7791F;}
   .chip.count{background:#F0ECFA;color:var(--primary);}
+  .chip.streak{background:#FFE8D6;color:#D2691E;}
   .t-action{flex-shrink:0;}
   .btn-do{background:var(--primary);color:#fff;border-radius:12px;padding:10px 16px;font-weight:700;font-size:14px;}
   .btn-do:active{background:var(--primary-dark);}
@@ -570,17 +571,46 @@ function xpForTask(taskId){
   const t=TASKS.find(x=>x.id===taskId); if(t) return t.xp;
   const c=(state.customTasks||[]).find(x=>x.id===taskId); return c?c.xp:0;
 }
-const CUSTOM_WEEKLY_CAP = 100;   // aile gorevleri sezon toplamina haftada en fazla bu kadar katar (backend computeXP ile ESLESMELI)
+/* asagidaki sabitler + seri mantigi backend computeXP ile ESLESMELI */
+const CUSTOM_WEEKLY_CAP = 150;   // aile gorevleri sezon toplamina haftada en fazla bu kadar katar
+const STREAK_MIN = 3;            // bir gunluk gorevi bu kadar gun ust uste yapinca bonus baslar
+const STREAK_BONUS = 5;          // her bonus gunu (gun 3+) icin ekstra yildiz
+function dayDiff(a,b){ return Math.round((Date.parse(b+"T00:00:00Z") - Date.parse(a+"T00:00:00Z"))/86400000); }
+function runStreakBonus(dates){
+  const ds=[...new Set(dates)].sort();
+  if(!ds.length) return 0;
+  let bonus=0, run=1;
+  for(let i=1;i<ds.length;i++){
+    if(dayDiff(ds[i-1],ds[i])===1) run++;
+    else { bonus += Math.max(0, run-(STREAK_MIN-1))*STREAK_BONUS; run=1; }
+  }
+  return bonus + Math.max(0, run-(STREAK_MIN-1))*STREAK_BONUS;
+}
 function userXP(userId){
   const comps = state.completions.filter(c=>c.userId===userId && c.status==="approved");
-  let total=0; const customByWeek={};
+  let total=0; const customByWeek={}; const dailyDates={};
   for(const c of comps){
     const cat = TASKS.find(x=>x.id===c.taskId);          // kodda sabit katalog gorevi
-    if(cat){ total += cat.xp; }
+    if(cat){
+      total += cat.xp;
+      if(cat.type==="daily") (dailyDates[cat.id]=dailyDates[cat.id]||[]).push(c.date);
+    }
     else { customByWeek[c.week] = (customByWeek[c.week]||0) + xpForTask(c.taskId); }  // aile gorevi: haftaya gore topla
   }
   for(const w in customByWeek) total += Math.min(CUSTOM_WEEKLY_CAP, customByWeek[w]);
+  for(const tid in dailyDates) total += runStreakBonus(dailyDates[tid]);   // gunluk seri bonusu
   return total;
+}
+/* bir gunluk gorevin GUNCEL serisi (bugun veya dunde biten ardisik gun sayisi) - kart rozeti icin */
+function taskStreak(userId, taskId){
+  const dates = new Set(state.completions.filter(c=>c.userId===userId && c.status==="approved" && c.taskId===taskId).map(c=>c.date));
+  if(!dates.size) return 0;
+  const fmt = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  const d = new Date();
+  if(!dates.has(fmt(d))) d.setDate(d.getDate()-1);   // bugun bos ise dunden say
+  let s=0;
+  while(dates.has(fmt(d))){ s++; d.setDate(d.getDate()-1); }
+  return s;
 }
 /* ardisik gun serisi (streak): o gun en az 1 onayli gorev = seri devam.
    bugun henuz yapilmadiysa seri kirilmaz (dunden sayilir). */
@@ -924,6 +954,8 @@ function taskRow(task){
     actionHTML = `<button class="btn-do" onclick="openDo('${task.id}')">Yaptım</button>`;
   }
   const countChip = task.target>1 ? `<span class="chip count">${done}/${task.target}</span>` : "";
+  const st = task.type==="daily" ? taskStreak(session.id, task.id) : 0;
+  const streakChip = st>=STREAK_MIN ? `<span class="chip streak" title="${st} gün üst üste! Her gün +${STREAK_BONUS} ⭐ bonus">🔥 ${st}g · +${STREAK_BONUS}</span>` : "";
   const tt = themed(task);
   const variant = tv(task, session.age);
   const subText = tt.sub || (task.sub||"");
@@ -938,7 +970,7 @@ function taskRow(task){
         <div class="t-meta">
           <span class="chip xp">+${task.xp} ⭐</span>
           <span class="chip win">🕐 ${winLabel(task)}</span>
-          ${countChip}${stateChip}
+          ${countChip}${streakChip}${stateChip}
         </div>
       </div>
       <div class="t-action">${actionHTML}</div>
@@ -1064,6 +1096,15 @@ function showAiReject(note){
    Yeni ozellik eklenince buraya bir kayit ekle. audience: child | parent | all.
    Cocuga tema botu diliyle, aileye bilgilendirici; her kullaniciya bir kez. */
 const ANNOUNCEMENTS = [
+  { id:"2026-06-04-seri", audience:"child", title:"Yeni: Seri Bonusu! 🔥",
+    items:["🔥 Aynı günlük görevi 3 gün üst üste yaparsan, o günden sonra HER GÜN +5 ekstra ⭐!",
+           "📈 Ne kadar uzun sektirmezsen, o kadar çok bonus toplarsın",
+           "⚠️ Bir gün atlarsan seri sıfırlanır, sakın bozma!",
+           "🧠 Haftalık ana görevler en değerli yıldızlar, onları unutma"] },
+  { id:"2026-06-04-aile-seri", audience:"parent", emoji:"🔥", title:"Yeni: Seri bonusu + denge",
+    items:["🔥 Çocuk bir günlük görevi 3+ gün üst üste yaparsa her gün +5 ⭐ seri bonusu kazanır (tutarlılığı ödüllendirir)",
+           "🧠 Haftalık ana görevlerin puanı yükseltildi, en değerli görevler onlar",
+           "🎁 Eklediğiniz özel görevler sezon toplamına haftada en fazla 150 ⭐ katar"] },
   { id:"2026-06-03-motivasyon", audience:"child", title:"Maceran büyüdü!",
     items:["🔥 Her gün üst üste görev yap, SERİNİ büyüt! Sakın bozma.",
            "⭐ Topladığın yıldızlar seni yeni RÜTBELERE çıkarıyor",

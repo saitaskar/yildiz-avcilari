@@ -11,13 +11,34 @@ const MAX_CHILD_TURNS = 4;                     // bu kadar mesajdan sonra AI kar
 // gorev XP'leri (frontend TASKS ile ESLESMELI; katalog kodda sabit oldugu icin burada da var)
 const TASK_XP = {ogren:150, ekransiz:75, fiziksel:50, yatak:15, dis_sabah:10, dis_aksam:10,
   el:3, su:3, banyo:20, kahvalti:10, ogle:10, aksam:10, sofra:15, kitap:15};
-const CUSTOM_WEEKLY_CAP = 100;   // aile gorevleri sezon toplamina haftada en fazla bu kadar katar (fazlasi gorunur, puana saymaz)
+const CUSTOM_WEEKLY_CAP = 150;   // aile gorevleri sezon toplamina haftada en fazla bu kadar katar (fazlasi gorunur, puana saymaz)
+const WEEKLY_TASKS = new Set(["ogren","ekransiz","fiziksel"]);  // gerisi gunluk
+const STREAK_MIN = 3;            // bir gunluk gorevi bu kadar gun ust uste yapinca bonus baslar
+const STREAK_BONUS = 5;          // her bonus gunu icin ekstra yildiz (gun 3'ten itibaren)
 
-/* cocugun onayli toplam XP'si (kod gorevleri + ozel gorevler) */
+function dayDiff(a,b){ return Math.round((Date.parse(b+"T00:00:00Z") - Date.parse(a+"T00:00:00Z"))/86400000); }
+/* bir gorevin gun listesinden seri bonusu: her ardisik kosuda (uzunluk L) max(0,L-(MIN-1)) gun x BONUS */
+function runStreakBonus(dates){
+  const ds=[...new Set(dates)].sort();
+  if(!ds.length) return 0;
+  let bonus=0, run=1;
+  for(let i=1;i<ds.length;i++){
+    if(dayDiff(ds[i-1],ds[i])===1) run++;
+    else { bonus += Math.max(0, run-(STREAK_MIN-1))*STREAK_BONUS; run=1; }
+  }
+  return bonus + Math.max(0, run-(STREAK_MIN-1))*STREAK_BONUS;
+}
+
+/* cocugun onayli toplam XP'si (kod gorevleri + ozel gorevler + gunluk seri bonusu) */
 async function computeXP(env, userId){
-  const comps = (await env.DB.prepare("SELECT task_id, week FROM completions WHERE user_id=? AND status='approved'").bind(userId).all()).results||[];
-  let total=0; const customRows=[];
-  for(const c of comps){ if(TASK_XP[c.task_id]!=null) total+=TASK_XP[c.task_id]; else customRows.push(c); }
+  const comps = (await env.DB.prepare("SELECT task_id, week, date FROM completions WHERE user_id=? AND status='approved'").bind(userId).all()).results||[];
+  let total=0; const customRows=[]; const dailyDates={};
+  for(const c of comps){
+    if(TASK_XP[c.task_id]!=null){
+      total+=TASK_XP[c.task_id];
+      if(!WEEKLY_TASKS.has(c.task_id)) (dailyDates[c.task_id]=dailyDates[c.task_id]||[]).push(c.date);
+    } else customRows.push(c);
+  }
   if(customRows.length){
     const cts=(await env.DB.prepare("SELECT id,xp FROM custom_tasks WHERE child_id=?").bind(userId).all()).results||[];
     const m={}; cts.forEach(c=>m[c.id]=c.xp);
@@ -25,6 +46,7 @@ async function computeXP(env, userId){
     for(const c of customRows){ byWeek[c.week]=(byWeek[c.week]||0)+(m[c.task_id]||0); }
     for(const w in byWeek) total += Math.min(CUSTOM_WEEKLY_CAP, byWeek[w]);   // haftalik custom tavani
   }
+  for(const tid in dailyDates) total += runStreakBonus(dailyDates[tid]);       // gunluk seri bonusu
   return total;
 }
 /* hedefe ulastiysa ve daha once kaydedilmemisse odul kazanimini logla */
