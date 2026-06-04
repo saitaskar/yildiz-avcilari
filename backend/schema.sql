@@ -95,3 +95,15 @@ CREATE TABLE rewards_log (
   ts         INTEGER NOT NULL
 );
 CREATE INDEX idx_rewards_user ON rewards_log(user_id);
+
+-- Web push abonelikleri (ebeveyn/admin cihazlari; anlik onay-bekliyor bildirimi)
+CREATE TABLE IF NOT EXISTS push_subs (
+  id        TEXT PRIMARY KEY,
+  user_id   TEXT NOT NULL,
+  endpoint  TEXT NOT NULL,
+  p256dh    TEXT,
+  auth      TEXT,
+  ts        INTEGER NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_push_endpoint ON push_subs(endpoint);
+CREATE INDEX IF NOT EXISTS idx_push_user ON push_subs(user_id);

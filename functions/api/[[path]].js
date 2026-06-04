@@ -12,6 +12,8 @@ const MAX_CHILD_TURNS = 4;                     // bu kadar mesajdan sonra AI kar
 const TASK_XP = {ogren:150, ekransiz:75, fiziksel:50, yatak:15, dis_sabah:10, dis_aksam:10,
   el:3, su:3, banyo:20, kahvalti:10, ogle:10, aksam:10, sofra:15, kitap:15};
 const CUSTOM_WEEKLY_CAP = 150;   // aile gorevleri sezon toplamina haftada en fazla bu kadar katar (fazlasi gorunur, puana saymaz)
+const VAPID_PUBLIC = "BNBvz-yPPKT19mgKU4sB3vipVo_Ft1O0B3QLcgGy9YiDOI85hzY6MNIS54lojNR2jqqecGHSz0MaYyPUX98oy28";  // public anahtar (frontend de kullanir)
+const VAPID_SUBJECT = "mailto:yildiz@cryme.tr";
 const WEEKLY_TASKS = new Set(["ogren","ekransiz","fiziksel"]);  // gerisi gunluk
 const STREAK_MIN = 3;            // bir gunluk gorevi bu kadar gun ust uste yapinca bonus baslar
 const STREAK_BONUS = 5;          // her bonus gunu icin ekstra yildiz (gun 3'ten itibaren)
@@ -91,6 +93,40 @@ function fromB64url(s){
 }
 async function hmacKey(secret, usage){
   return crypto.subtle.importKey("raw", enc.encode(secret), {name:"HMAC",hash:"SHA-256"}, false, usage);
+}
+
+/* ---------- web push (VAPID, payloadsiz) ---------- */
+let _vapidKey = null;
+async function vapidKey(env){
+  if(_vapidKey) return _vapidKey;
+  const jwk = JSON.parse(env.VAPID_PRIVATE_JWK || "{}");
+  _vapidKey = await crypto.subtle.importKey("jwk", jwk, {name:"ECDSA", namedCurve:"P-256"}, false, ["sign"]);
+  return _vapidKey;
+}
+async function vapidJwt(env, audience){
+  const header  = b64url(enc.encode(JSON.stringify({typ:"JWT", alg:"ES256"})));
+  const payload = b64url(enc.encode(JSON.stringify({aud:audience, exp:Math.floor(Date.now()/1000)+12*3600, sub:VAPID_SUBJECT})));
+  const input = header + "." + payload;
+  const sig = await crypto.subtle.sign({name:"ECDSA", hash:"SHA-256"}, await vapidKey(env), enc.encode(input));
+  return input + "." + b64url(sig);
+}
+async function sendPush(env, sub){
+  try{
+    const jwt = await vapidJwt(env, new URL(sub.endpoint).origin);
+    const res = await fetch(sub.endpoint, { method:"POST", headers:{ "TTL":"86400", "Authorization":"vapid t="+jwt+", k="+VAPID_PUBLIC } });
+    if(res.status===404 || res.status===410) await env.DB.prepare("DELETE FROM push_subs WHERE endpoint=?").bind(sub.endpoint).run();  // gecersiz abonelik
+    return res.status;
+  }catch(e){ return 0; }
+}
+async function pushToUser(env, userId){
+  const subs = (await env.DB.prepare("SELECT endpoint FROM push_subs WHERE user_id=?").bind(userId).all()).results||[];
+  for(const s of subs) await sendPush(env, s);
+}
+/* cocugun onaylayicilarini (ebeveyn yoksa adminleri) bilgilendir */
+async function notifyApprovers(env, child){
+  let ids=[]; try{ ids = child.parents ? JSON.parse(child.parents) : []; }catch(e){}
+  if(!ids.length){ const ad=(await env.DB.prepare("SELECT id FROM users WHERE role='admin'").all()).results||[]; ids=ad.map(a=>a.id); }
+  for(const id of ids) await pushToUser(env, id);
 }
 async function signToken(payload, secret){
   const data = b64url(enc.encode(JSON.stringify(payload)));
@@ -299,7 +335,20 @@ export async function onRequest(context){
         "INSERT INTO completions (id,user_id,task_id,date,week,ts,status,proof_text,proof_photo_key,ai_ok,ai_note,approver_id) "+
         "VALUES (?,?,?,?,?,?,'pending',?,?,NULL,NULL,NULL)"
       ).bind(id, me.id, taskId, date, week, ts, proofText||null, photoKey).run();
+      context.waitUntil(notifyApprovers(env, me));   // ebeveyne anlik "onay bekliyor" push'u (yaniti bloklamaz)
       return json({ ok:true, id });
+    }
+
+    /* --- ebeveyn/admin: web push aboneligi kaydet --- */
+    if(route==="push-subscribe" && method==="POST"){
+      const sub = body.subscription || body;
+      if(!sub || !sub.endpoint) return bad("subscription gerekli");
+      const keys = sub.keys || {};
+      await env.DB.prepare(
+        "INSERT INTO push_subs (id,user_id,endpoint,p256dh,auth,ts) VALUES (?,?,?,?,?,?) "+
+        "ON CONFLICT(endpoint) DO UPDATE SET user_id=excluded.user_id, p256dh=excluded.p256dh, auth=excluded.auth, ts=excluded.ts"
+      ).bind("ps_"+Date.now()+"_"+Math.floor(Math.random()*1e6), me.id, sub.endpoint, keys.p256dh||"", keys.auth||"", Date.now()).run();
+      return json({ ok:true });
     }
 
     /* --- cocuk: ogrenme sohbeti --- */

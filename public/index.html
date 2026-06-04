@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Yıldız Avcıları</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#6C2BD9">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Yıldız">
+<link rel="icon" type="image/png" href="/icon-192.png">
 <style>
   :root{
     --primary:#6C2BD9;      /* mor */
@@ -1300,6 +1307,7 @@ function renderApprover(){
       <h2>Onay Bekleyenler</h2>
       <div class="sub">${session.title} olarak ${session.kids.map(k=>user(k).name).join(", ")} için onay veriyorsun.</div>
       ${pend.length? pend.map(approveCard).join("") : `<div class="empty"><span class="e">🎉</span>Bekleyen onay yok. Hepsi temiz!</div>`}
+      ${notifBtnHTML()}
     </div>
     ${leaderboardHTML(session.kids)}
     <div class="card">
@@ -1555,7 +1563,8 @@ function renderAdmin(){
     </div>
     <div class="card">
       <h2>Yönetim</h2>
-      <button class="btn-no" style="width:100%" onclick="resetData()">🗑️ Tüm görev kayıtlarını sıfırla</button>
+      ${notifBtnHTML()}
+      <button class="btn-no" style="width:100%;margin-top:10px" onclick="resetData()">🗑️ Tüm görev kayıtlarını sıfırla</button>
     </div>
   `;
 }
@@ -1597,8 +1606,45 @@ function toast(msg){
   setTimeout(()=>{m.innerHTML="";},2200);
 }
 
+/* ======================= WEB PUSH (bildirim) ======================= */
+const VAPID_PUBLIC = "BNBvz-yPPKT19mgKU4sB3vipVo_Ft1O0B3QLcgGy9YiDOI85hzY6MNIS54lojNR2jqqecGHSz0MaYyPUX98oy28";
+let swReg = null;
+function pushSupported(){ return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window; }
+async function registerSW(){
+  if(!("serviceWorker" in navigator)) return null;
+  try{ swReg = await navigator.serviceWorker.register("/sw.js"); return swReg; }catch(e){ return null; }
+}
+function urlB64ToUint8(s){
+  const pad="=".repeat((4-s.length%4)%4); const b=(s+pad).replace(/-/g,"+").replace(/_/g,"/");
+  const raw=atob(b); return Uint8Array.from(raw, c=>c.charCodeAt(0));
+}
+/* ebeveyn/admin: bildirim butonu durumu */
+function notifBtnHTML(){
+  if(!pushSupported()) return "";   // tarayici desteklemiyor ( or. iOS Safari sekmesi)
+  const on = Notification.permission==="granted";
+  return `<button class="btn-ghost" id="pushBtn" style="width:100%;margin-top:10px" onclick="enablePush()">
+    ${on?"🔔 Bildirimler açık":"🔔 Onay bildirimlerini aç"}</button>
+    ${(!on && /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.navigator.standalone)
+      ? `<div style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center">iPhone'da: paylaş → "Ana Ekrana Ekle", sonra açılan uygulamadan bu butona bas.</div>` : ""}`;
+}
+async function enablePush(){
+  if(!pushSupported()){ toast("Bu cihaz/tarayıcı bildirimi desteklemiyor"); return; }
+  try{
+    const perm = await Notification.requestPermission();
+    if(perm!=="granted"){ toast("Bildirim izni verilmedi"); return; }
+    const reg = swReg || await registerSW();
+    if(!reg){ toast("Bildirim kurulamadı"); return; }
+    let sub = await reg.pushManager.getSubscription();
+    if(!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:urlB64ToUint8(VAPID_PUBLIC) });
+    await api("/push-subscribe", {method:"POST", body:{ subscription: sub.toJSON() }});
+    toast("Bildirimler açıldı 🔔");
+    const b=document.getElementById("pushBtn"); if(b) b.textContent="🔔 Bildirimler açık";
+  }catch(e){ toast("Hata: "+e.message); }
+}
+
 /* ======================= BOOT ======================= */
 async function boot(){
+  registerSW();
   const dev = location.search.indexOf("dev")>=0;   // ?dev ile gizli (test) kullanicilar da gorunur
   try{ const d = await api("/users"+(dev?"?dev":"")); loginUsers = d.users || []; }
   catch(e){ loginUsers = []; toast("Sunucuya bağlanılamadı"); }
