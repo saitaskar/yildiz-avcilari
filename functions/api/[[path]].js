@@ -9,18 +9,21 @@ const MAX_PHOTO_CHARS = 750000;                // ~550KB base64 foto siniri (R2 
 const AI_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const MAX_CHILD_TURNS = 4;                     // bu kadar mesajdan sonra AI karar vermek zorunda
 // gorev XP'leri (frontend TASKS ile ESLESMELI; katalog kodda sabit oldugu icin burada da var)
-const TASK_XP = {ogren:100, ekransiz:60, fiziksel:40, yatak:15, dis_sabah:10, dis_aksam:10,
-  el:5, su:5, banyo:20, kahvalti:10, ogle:10, aksam:10, sofra:15, kitap:15};
+const TASK_XP = {ogren:150, ekransiz:75, fiziksel:50, yatak:15, dis_sabah:10, dis_aksam:10,
+  el:3, su:3, banyo:20, kahvalti:10, ogle:10, aksam:10, sofra:15, kitap:15};
+const CUSTOM_WEEKLY_CAP = 100;   // aile gorevleri sezon toplamina haftada en fazla bu kadar katar (fazlasi gorunur, puana saymaz)
 
 /* cocugun onayli toplam XP'si (kod gorevleri + ozel gorevler) */
 async function computeXP(env, userId){
-  const comps = (await env.DB.prepare("SELECT task_id FROM completions WHERE user_id=? AND status='approved'").bind(userId).all()).results||[];
-  let total=0; const customIds=[];
-  for(const c of comps){ if(TASK_XP[c.task_id]!=null) total+=TASK_XP[c.task_id]; else customIds.push(c.task_id); }
-  if(customIds.length){
+  const comps = (await env.DB.prepare("SELECT task_id, week FROM completions WHERE user_id=? AND status='approved'").bind(userId).all()).results||[];
+  let total=0; const customRows=[];
+  for(const c of comps){ if(TASK_XP[c.task_id]!=null) total+=TASK_XP[c.task_id]; else customRows.push(c); }
+  if(customRows.length){
     const cts=(await env.DB.prepare("SELECT id,xp FROM custom_tasks WHERE child_id=?").bind(userId).all()).results||[];
     const m={}; cts.forEach(c=>m[c.id]=c.xp);
-    for(const id of customIds) total += (m[id]||0);
+    const byWeek={};
+    for(const c of customRows){ byWeek[c.week]=(byWeek[c.week]||0)+(m[c.task_id]||0); }
+    for(const w in byWeek) total += Math.min(CUSTOM_WEEKLY_CAP, byWeek[w]);   // haftalik custom tavani
   }
   return total;
 }
@@ -339,7 +342,7 @@ export async function onRequest(context){
         if(!kids.includes(childId)) return bad("Bu çocuk sizin değil", 403);
       }
       const id = "ct_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
-      const x = Math.max(1, Math.min(200, parseInt(xp)||10));
+      const x = Math.max(1, Math.min(50, parseInt(xp)||10));
       await env.DB.prepare("INSERT INTO custom_tasks (id,child_id,created_by,title,emoji,xp,status,ts) VALUES (?,?,?,?,?,?,'active',?)")
         .bind(id, childId, me.id, String(title).trim().slice(0,60), (emoji||"⭐").slice(0,4), x, Date.now()).run();
       return json({ ok:true, id });

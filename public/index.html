@@ -99,6 +99,9 @@
   .seg{display:flex;gap:8px;margin-bottom:14px;background:rgba(255,255,255,.07);padding:5px;border-radius:14px;}
   .seg button{flex:1;background:transparent;border-radius:10px;padding:9px 0;font-weight:700;font-size:13px;color:var(--muted);}
   .seg button.active{background:var(--primary);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+  .seg-badge{display:inline-block;min-width:17px;height:17px;line-height:17px;padding:0 4px;margin-left:5px;border-radius:9px;background:#FF3B30;color:#fff;font-size:11px;font-weight:800;vertical-align:middle;}
+  .week-warn{display:flex;align-items:center;gap:9px;padding:11px 13px;border-radius:12px;margin-bottom:12px;background:rgba(255,59,48,.10);border:1px solid rgba(255,59,48,.35);font-size:13px;font-weight:600;color:var(--text);}
+  .week-warn .ww-ico{font-size:20px;line-height:1;flex-shrink:0;}
 
   .task{display:flex;align-items:center;gap:12px;padding:12px;border:2px solid var(--line);border-radius:14px;margin-bottom:10px;transition:.15s;}
   .task .t-ico{width:46px;height:46px;border-radius:12px;background:#F3ECFF;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;}
@@ -305,7 +308,7 @@ const STORE_KEY = "gp_state_v2";
 const TASKS = [
   // ===== HAFTALIK ANA GÖREVLER =====
   {id:"ogren", emoji:"🧠", title:"Bilgi Kaşifi", sub:"Yeni bir şey öğren, kendi cümlelerinle anlat",
-   type:"weekly", xp:100, target:1, win:[0,24], proof:"text", cat:"Öğrenme", ai:true,
+   type:"weekly", xp:150, target:1, win:[0,24], proof:"text", cat:"Öğrenme", ai:true,
    variants:{
      "8":{hint:"Günün hayvanı: bir hayvan seç, en ilginç özelliğini yaz",
           ph:"Örn: Ahtapotların üç kalbi var ve mavi kanları olduğunu öğrendim..."},
@@ -313,9 +316,9 @@ const TASKS = [
            ph:"Örn: Yapay zeka nasıl çalışır / uzay mekiği nasıl yörüngeye oturur..."}
    }},
   {id:"ekransiz", emoji:"📵", title:"Ekransız Mola", sub:"1 saat ekransız: kitap, lego ya da maket",
-   type:"weekly", xp:60, target:2, win:[0,24], proof:"photo", cat:"Öğrenme"},
+   type:"weekly", xp:75, target:2, win:[0,24], proof:"photo", cat:"Öğrenme"},
   {id:"fiziksel", emoji:"🏆", title:"Kahraman Antrenmanı", sub:"Hareket et, formda kal",
-   type:"weekly", xp:40, target:3, win:[0,24], proof:"photo", cat:"Sağlık",
+   type:"weekly", xp:50, target:3, win:[0,24], proof:"photo", cat:"Sağlık",
    variants:{
      "8":{hint:"Parkta 20 dk oyun ya da 20 kez zıplama"},
      "13":{hint:"20 şınav ya da 20 dk yürüyüş / hareket"}
@@ -325,8 +328,8 @@ const TASKS = [
   {id:"yatak", emoji:"🛏️", title:"Yatak Ustası", sub:"Yatağını düzgün topla", type:"daily", xp:15, target:1, win:[7,11], proof:"photo", cat:"Ev"},
   {id:"dis_sabah", emoji:"🦷", title:"Sağlık Kalkanı · sabah", sub:"Dişlerini fırçala", type:"daily", xp:10, target:1, win:[6,12], proof:"none", cat:"Bakım"},
   {id:"dis_aksam", emoji:"🦷", title:"Sağlık Kalkanı · akşam", sub:"Dişlerini fırçala", type:"daily", xp:10, target:1, win:[18,24], proof:"none", cat:"Bakım"},
-  {id:"el", emoji:"🧼", title:"Mikrop Avcısı", sub:"Ellerini yıka", type:"daily", xp:5, target:3, win:[0,24], proof:"none", cat:"Bakım"},
-  {id:"su", emoji:"💧", title:"Su Büyüsü", sub:"Büyük bir bardak su iç", type:"daily", xp:5, target:3, win:[0,24], proof:"none", cat:"Sağlık"},
+  {id:"el", emoji:"🧼", title:"Mikrop Avcısı", sub:"Ellerini yıka", type:"daily", xp:3, target:3, win:[0,24], proof:"none", cat:"Bakım"},
+  {id:"su", emoji:"💧", title:"Su Büyüsü", sub:"Büyük bir bardak su iç", type:"daily", xp:3, target:3, win:[0,24], proof:"none", cat:"Sağlık"},
   {id:"banyo", emoji:"🛁", title:"Banyo yap", sub:"Güzelce yıkan, tertemiz ol", type:"daily", xp:20, target:1, win:[0,24], proof:"none", cat:"Bakım"},
   {id:"kahvalti", emoji:"🥣", title:"Kahvaltı", sub:"Güne sağlıklı başla", type:"daily", xp:10, target:1, win:[7,10], proof:"none", cat:"Sağlık"},
   {id:"ogle", emoji:"🍽️", title:"Öğle Yemeği", sub:"Öğününü ye", type:"daily", xp:10, target:1, win:[12,15], proof:"none", cat:"Sağlık"},
@@ -559,14 +562,25 @@ function approvedCount(userId, task){
   const period = task.type==="weekly" ? "week" : "day";
   return compsFor(userId, task.id, period).filter(c=>c.status==="approved").length;
 }
+/* bu hafta cocugun hala yapmasi gereken haftalik gorevler (onaydakiler "yapildi" sayilir) */
+function weeklyTodo(userId){
+  return TASKS.filter(t=>t.type==="weekly").filter(t=>doneCount(userId,t) < t.target);
+}
 function xpForTask(taskId){
   const t=TASKS.find(x=>x.id===taskId); if(t) return t.xp;
   const c=(state.customTasks||[]).find(x=>x.id===taskId); return c?c.xp:0;
 }
+const CUSTOM_WEEKLY_CAP = 100;   // aile gorevleri sezon toplamina haftada en fazla bu kadar katar (backend computeXP ile ESLESMELI)
 function userXP(userId){
-  return state.completions
-    .filter(c=>c.userId===userId && c.status==="approved")
-    .reduce((s,c)=> s + xpForTask(c.taskId), 0);
+  const comps = state.completions.filter(c=>c.userId===userId && c.status==="approved");
+  let total=0; const customByWeek={};
+  for(const c of comps){
+    const cat = TASKS.find(x=>x.id===c.taskId);          // kodda sabit katalog gorevi
+    if(cat){ total += cat.xp; }
+    else { customByWeek[c.week] = (customByWeek[c.week]||0) + xpForTask(c.taskId); }  // aile gorevi: haftaya gore topla
+  }
+  for(const w in customByWeek) total += Math.min(CUSTOM_WEEKLY_CAP, customByWeek[w]);
+  return total;
 }
 /* ardisik gun serisi (streak): o gun en az 1 onayli gorev = seri devam.
    bugun henuz yapilmadiysa seri kirilmaz (dunden sayilir). */
@@ -710,7 +724,7 @@ function enterApp(){
   renderApp();
   startAutoRefresh();
   setTimeout(showAnnouncements, 500);
-  if(session.role==="child") setTimeout(checkCheckpointCelebration, 1100);
+  if(session.role==="child"){ setTimeout(checkCheckpointCelebration, 1100); setTimeout(showWeeklyReminder, 1700); }
 }
 function logout(){ stopAutoRefresh(); if(session) clearSavedToken(session.id); resetTheme(); session=null; authToken=null; pinTarget=null; pinDraft=""; document.getElementById("wizardMount").innerHTML=""; document.getElementById("appBody").innerHTML=""; document.getElementById("appView").classList.add("hidden"); document.getElementById("loginView").classList.remove("hidden"); renderLogin(); }
 
@@ -861,7 +875,7 @@ function renderChild(){
 
     <div class="seg">
       <button class="${childTab==='today'?'active':''}" onclick="setChildTab('today')">Bugün</button>
-      <button class="${childTab==='week'?'active':''}" onclick="setChildTab('week')">Haftalık</button>
+      <button class="${childTab==='week'?'active':''}" onclick="setChildTab('week')">Haftalık${(()=>{const n=weeklyTodo(session.id).length;return n?`<span class="seg-badge">${n}</span>`:"";})()}</button>
       <button class="${childTab==='board'?'active':''}" onclick="setChildTab('board')">Sıralama</button>
     </div>
     <div id="childContent"></div>
@@ -883,7 +897,9 @@ function renderChildContent(){
     const customHTML = mine.length ? `<div class="sub" style="margin-top:14px;color:var(--accent);font-weight:700">⭐ Aileden özel görevler</div>${mine.map(taskRow).join("")}` : "";
     c.innerHTML = `<div class="card"><h2>Bugünün görevleri</h2><div class="sub">Zamanı gelen görevleri yap, kanıtını gönder.</div>${list.map(taskRow).join("")}${customHTML}</div>`;
   }else{
-    c.innerHTML = `<div class="card"><h2>Haftalık ana görev</h2><div class="sub">Haftada bir, en değerli görev. Akıllı yardımcı değerlendirir.</div>${list.map(taskRow).join("")}</div>`;
+    const todo = weeklyTodo(session.id).length;
+    const warn = todo ? `<div class="week-warn"><span class="ww-ico">⏳</span><span>Bu hafta <b>${todo}</b> ana görevin seni bekliyor. En değerli yıldızlar burada!</span></div>` : "";
+    c.innerHTML = `<div class="card">${warn}<h2>Haftalık ana görev</h2><div class="sub">Haftada bir, en değerli görev. Akıllı yardımcı değerlendirir.</div>${list.map(taskRow).join("")}</div>`;
   }
 }
 function taskRow(task){
@@ -1130,6 +1146,37 @@ function checkCheckpointCelebration(){
   try{ localStorage.setItem("gp_cp_seen", JSON.stringify(seen.concat(fresh.map(x=>x.id)))); }catch(e){}
 }
 
+/* haftalik gorev hatirlatmasi: yapilmamis haftalik varsa ~2 gunde bir, temali bot diliyle */
+const WEEKLY_REMIND_GAP = 2*24*60*60*1000;  // 2 gun
+function showWeeklyReminder(){
+  if(!session || session.role!=="child") return;
+  if(document.getElementById("modalMount").innerHTML) return;   // baska modal aciksa bekle
+  const todo = weeklyTodo(session.id);
+  if(!todo.length) return;
+  const k = "gp_weekly_remind_"+session.id;
+  let last=0; try{ last=parseInt(localStorage.getItem(k)||"0",10)||0; }catch(e){}
+  if(Date.now()-last < WEEKLY_REMIND_GAP) return;
+  const th = themeOf(session);
+  const bot = th ? th.bot : {name:"Rehber", ico:"🤖"};
+  const lines = todo.map(t=>{
+    const tt=themed(t); const done=doneCount(session.id,t);
+    const left = t.target>1 ? ` <span style="color:var(--muted)">(${done}/${t.target})</span>` : "";
+    return `<div style="display:flex;align-items:center;gap:9px;padding:9px 12px;background:var(--line);border-radius:10px;margin-bottom:7px;font-size:14px"><span style="font-size:20px">${t.emoji}</span><span><b>${tt.title}</b> · +${t.xp} ⭐${left}</span></div>`;
+  }).join("");
+  showModal(`
+    <div style="text-align:center">
+      <div style="font-size:50px;animation:bob 2.2s ease-in-out infinite">${bot.ico}</div>
+      <div style="font-weight:800;font-size:13px;letter-spacing:1px;color:${th?th.colors.primary:'var(--primary)'};margin-bottom:4px">${bot.name}</div>
+      <h3 style="margin:4px 0 2px">Haftalık görevlerin seni bekliyor!</h3>
+      <div class="msub">Bunlar en değerli yıldızlar. Hafta bitmeden tamamla.</div>
+    </div>
+    <div style="margin:14px 0">${lines}</div>
+    <button class="btn-primary" style="width:100%" onclick="closeModal();setChildTab('week')">Haftalığa git 🚀</button>
+    <button class="btn-ghost" style="width:100%;margin-top:8px" onclick="closeModal()">Sonra</button>
+  `);
+  try{ localStorage.setItem(k, String(Date.now())); }catch(e){}
+}
+
 /* ======================= OGRENME SOHBETI ======================= */
 const LEARN_HELLO = {
   scifi:"Selam Kaptan! 🚀 Bugün hangi yeni bilgiyi keşfettin? Anlat bakalım.",
@@ -1329,7 +1376,10 @@ function openCustomTaskForm(){
     <div class="field"><label>Kime?</label><select id="ctChild" style="width:100%;border:2px solid var(--line);border-radius:12px;padding:12px">${kids}</select></div>
     <div class="field"><label>Görev</label><input type="text" id="ctTitle" placeholder="Örn: Oyuncaklarını topla" maxlength="60"></div>
     <div class="field"><label>İkon</label><div id="ctEmojis" style="display:flex;flex-wrap:wrap;gap:6px">${emojis.map((e,i)=>`<button type="button" class="emoji-pick${i===0?' sel':''}" onclick="pickEmoji(this,'${e}')">${e}</button>`).join("")}</div></div>
-    <div class="field"><label>Kaç yıldız?</label><input type="number" id="ctXp" value="15" min="1" max="200"></div>
+    <div class="field"><label>Kaç yıldız?</label><input type="number" id="ctXp" value="15" min="1" max="50" oninput="ctXpHint()">
+      <div id="ctXpWarn" style="font-size:12px;color:#B7791F;margin-top:5px;display:none"></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:5px">Aile görevleri sezon toplamına haftada en fazla ${CUSTOM_WEEKLY_CAP} ⭐ katar.</div>
+    </div>
     <div class="modal-actions">
       <button class="btn-ghost" onclick="closeModal()">Vazgeç</button>
       <button class="btn-primary" onclick="submitCustomTask()">Görevi Ver</button>
@@ -1340,6 +1390,12 @@ function pickEmoji(btn, e){
   ctEmoji=e;
   document.querySelectorAll(".emoji-pick").forEach(b=>b.classList.remove("sel"));
   btn.classList.add("sel");
+}
+function ctXpHint(){
+  const w=document.getElementById("ctXpWarn"); if(!w) return;
+  const v=parseInt(document.getElementById("ctXp").value)||0;
+  if(v>30){ w.style.display="block"; w.textContent="⚠️ Bu görev çoğu günlük görevden değerli. Emin misin?"; }
+  else w.style.display="none";
 }
 async function submitCustomTask(){
   const childId=document.getElementById("ctChild").value;
