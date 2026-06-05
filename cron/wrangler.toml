@@ -1,0 +1,10 @@
+name = "yildiz-cron"
+main = "src/index.js"
+compatibility_date = "2026-06-01"
+
+# Gunde 2: 10:00 ve 17:00 UTC = 13:00 ve 20:00 Istanbul (UTC+3)
+[triggers]
+crons = ["0 10 * * *", "0 17 * * *"]
+
+# Secret: CRON_SECRET (wrangler secret put ile, Pages projesindekiyle AYNI deger)
+# Worker sadece /api/cron-remind ucunu tetikler; VAPID/push mantigi Pages tarafinda.

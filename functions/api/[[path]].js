@@ -308,6 +308,22 @@ export async function onRequest(context){
       return json({ token, user: safeUser(u) });
     }
 
+    /* --- cron tetigi (gizli anahtar): bekleyen onaylari olan cocuklarin ebeveynlerine hatirlatma push'u --- */
+    if(route==="cron-remind" && method==="POST"){
+      if((request.headers.get("X-Cron-Secret")||"") !== (env.CRON_SECRET||"__unset__")) return bad("Yetkisiz", 403);
+      const cutoff = Date.now() - 30*60*1000;   // >30 dk bekleyenler (anlik push'la cakismasin)
+      const rows = (await env.DB.prepare("SELECT user_id, COUNT(*) n FROM completions WHERE status='pending' AND ts < ? GROUP BY user_id").bind(cutoff).all()).results||[];
+      const approvers = new Set(); let admins=null;
+      for(const r of rows){
+        const u = await env.DB.prepare("SELECT parents FROM users WHERE id=?").bind(r.user_id).first();
+        let ps=[]; try{ ps = u && u.parents ? JSON.parse(u.parents) : []; }catch(e){}
+        if(!ps.length){ if(!admins) admins=((await env.DB.prepare("SELECT id FROM users WHERE role='admin'").all()).results||[]).map(a=>a.id); ps=admins; }
+        ps.forEach(id=>approvers.add(id));
+      }
+      for(const id of approvers) await pushToUser(env, id);
+      return json({ ok:true, reminded: approvers.size });
+    }
+
     /* --- bundan sonrasi auth ister --- */
     const me = await auth(request, env);
     if(!me) return bad("Yetkisiz", 401);
