@@ -1234,16 +1234,12 @@ function showWeeklyReminder(){
   try{ localStorage.setItem(k, String(Date.now())); }catch(e){}
 }
 
-/* onay bekleyen gorevi olan cocuga: aileye hatirlat (only pending varsa, ~4 saatte bir) */
-const APPROVE_REMIND_GAP = 4*60*60*1000;
+/* onay bekleyen gorevi olan cocuga: aileye hatirlat. Onayda gorev oldukca HER acilista cikar (throttle yok). */
 function showApprovalReminder(){
   if(!session || session.role!=="child") return;
   if(document.getElementById("modalMount").innerHTML) return;   // baska modal aciksa bekle
   const pend = state.completions.filter(c=>c.userId===session.id && c.status==="pending");
   if(!pend.length) return;
-  const k = "gp_approve_remind_"+session.id;
-  let last=0; try{ last=parseInt(localStorage.getItem(k)||"0",10)||0; }catch(e){}
-  if(Date.now()-last < APPROVE_REMIND_GAP) return;
   const th = themeOf(session);
   const bot = th ? th.bot : {name:"Rehber", ico:"🤖"};
   const names = [...new Set(pend.map(c=>{ const t=taskById(c.taskId); return t?(themed(t).title||t.title):null; }).filter(Boolean))];
@@ -1258,7 +1254,6 @@ function showApprovalReminder(){
     <div style="margin:14px 0">${lines}</div>
     <button class="btn-primary" style="width:100%" onclick="closeModal()">Aileme söyleyeceğim! 👍</button>
   `);
-  try{ localStorage.setItem(k, String(Date.now())); }catch(e){}
 }
 
 /* ======================= OGRENME SOHBETI ======================= */
