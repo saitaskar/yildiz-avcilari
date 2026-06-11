@@ -1103,6 +1103,10 @@ function showAiReject(note){
    Yeni ozellik eklenince buraya bir kayit ekle. audience: child | parent | all.
    Cocuga tema botu diliyle, aileye bilgilendirici; her kullaniciya bir kez. */
 const ANNOUNCEMENTS = [
+  { id:"2026-06-11-c3-kulaklik", audience:"child", to:["c3"], confetti:true, emoji:"🎧", title:"Kablosuz Kulaklığını kazandın! 🎉",
+    items:["🏆 1500 ⭐ hedefine ulaştın ve ara ödülünü hak ettin: Kablosuz Kulaklık! 🎧",
+           "📦 En kısa zamanda sana göndereceğiz, hazır ol!",
+           "🚀 Harikasın! Böyle devam et, büyük ödül de seni bekliyor"] },
   { id:"2026-06-05-aile-onay", audience:"parent", emoji:"🙏", title:"Onaylarken küçük bir rica",
     items:["✅ Görevi, çocuk gerçekten yaptığında ve mümkünse o sırada onaylayın",
            "⏱️ Günün hepsini tek seferde toplu onaylamak yerine, yapıldıkça onaylayın",
@@ -1138,7 +1142,7 @@ function showAnnouncements(){
   const aud = session.role==="child" ? "child" : "parent";
   let seen=[]; try{ seen=JSON.parse(localStorage.getItem("gp_seen_announce")||"[]"); }catch(e){}
   const key = a => a.id+"_"+session.id;
-  const pending = ANNOUNCEMENTS.filter(a=>(a.audience===aud||a.audience==="all") && !seen.includes(key(a)));
+  const pending = ANNOUNCEMENTS.filter(a=>(a.audience===aud||a.audience==="all") && (!a.to || a.to.includes(session.id)) && !seen.includes(key(a)));
   if(!pending.length) return;
   const a = pending[0];
   const th = themeOf(session);
@@ -1153,6 +1157,7 @@ function showAnnouncements(){
     <div style="margin:14px 0">${a.items.map(i=>`<div style="padding:9px 12px;background:var(--line);border-radius:10px;margin-bottom:7px;font-size:14px;line-height:1.4">${i}</div>`).join("")}</div>
     <button class="btn-primary" style="width:100%" onclick="closeModal()">${session.role==="child"?"Süper, anladım! 🚀":"Tamam"}</button>
   `);
+  if(a.confetti && typeof fireConfetti==="function") fireConfetti();
   seen.push(key(a));
   try{ localStorage.setItem("gp_seen_announce", JSON.stringify(seen)); }catch(e){}
 }
