@@ -4,7 +4,9 @@
 
 const enc = new TextEncoder();
 const AI_TASKS = new Set(["ogren"]);          // sohbetli AI gorevi
-const TOKEN_TTL = 1000*60*60*12;               // 12 saat (calinan token riskini sinirla)
+const TOKEN_TTL = 1000*60*60*12;               // 12 saat (eski PIN/aile-kodu oturumu)
+const ACCOUNT_TTL = 1000*60*60*24*400;         // ~400 gun: hesap oturumu pratikte sinirsiz (storage temizlenince biter)
+const PBKDF2_ITER = 100000;                    // parola hash iterasyonu
 const MAX_PHOTO_CHARS = 750000;                // ~550KB base64 foto siniri (R2 kotuye kullanim)
 const AI_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const MAX_CHILD_TURNS = 4;                     // bu kadar mesajdan sonra AI karar vermek zorunda
@@ -83,6 +85,8 @@ const json = (data, status=200) =>
   new Response(JSON.stringify(data), {status, headers:{"content-type":"application/json"}});
 const bad = (msg, status=400) => json({error:msg}, status);
 const firstName = (n) => String(n||"").split(" ")[0];   // login ekraninda mahremiyet: yalniz ilk ad
+/* karisik-olmayan kod uret (aile/davet anahtari) */
+function genCode(n){ const A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; n=n||8; let s=""; const r=crypto.getRandomValues(new Uint8Array(n)); for(let i=0;i<n;i++) s+=A[r[i]%A.length]; return s; }
 /* root admin denetimi icin deterministik, isimsiz takma kimlik (PII yok) */
 function anonId(s){ let h=2166136261>>>0; s=String(s||""); for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619)>>>0; } return h.toString(36).toUpperCase().slice(0,4).padStart(4,"0"); }
 /* Turkce harf + casing katlama: tum varyantlari tek ASCII-kucuk uzaya indir.
@@ -185,10 +189,54 @@ async function auth(request, env){
   const h = request.headers.get("Authorization")||"";
   let token = h.replace(/^Bearer\s+/i,"");
   if(!token){ try{ token = new URL(request.url).searchParams.get("t")||""; }catch(e){} } // <img> foto icin
-  const p = await verifyToken(token, env.SESSION_SECRET || "dev-secret-change-me");
-  if(!p) return null;
+  const p = await verifyToken(token, env.SESSION_SECRET);
+  if(!p || !p.uid) return null;
   const u = await env.DB.prepare("SELECT * FROM users WHERE id=?").bind(p.uid).first();
   return u || null;
+}
+
+/* ---------- hesap (account) auth: PBKDF2 parola + token (aid) ---------- */
+async function hashPassword(password, saltB64, iter){
+  const salt = saltB64 ? fromB64url(saltB64) : crypto.getRandomValues(new Uint8Array(16));
+  const it = iter || PBKDF2_ITER;
+  const key = await crypto.subtle.importKey("raw", enc.encode(String(password)), {name:"PBKDF2"}, false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({name:"PBKDF2", salt, iterations:it, hash:"SHA-256"}, key, 256);
+  return { hash: b64url(bits), salt: b64url(salt), iter: it };
+}
+async function verifyPassword(password, hashB64, saltB64, iter){
+  if(!hashB64 || !saltB64) return false;
+  const r = await hashPassword(password, saltB64, iter);
+  const a = r.hash, b = hashB64;                 // sabit-zamanli karsilastirma
+  if(a.length !== b.length) return false;
+  let diff=0; for(let i=0;i<a.length;i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff===0;
+}
+async function authAccount(request, env){
+  const h = request.headers.get("Authorization")||"";
+  let token = h.replace(/^Bearer\s+/i,"");
+  if(!token){ try{ token = new URL(request.url).searchParams.get("t")||""; }catch(e){} }
+  const p = await verifyToken(token, env.SESSION_SECRET);
+  if(!p || !p.aid) return null;
+  return await env.DB.prepare("SELECT * FROM accounts WHERE id=?").bind(p.aid).first();
+}
+async function accountToken(env, accId){
+  return await signToken({aid:accId, exp:Date.now()+ACCOUNT_TTL}, env.SESSION_SECRET||"dev-secret-change-me");
+}
+/* hesap bu aileye bagli mi (owner/parent)? */
+async function accountInFamily(env, accId, familyId){
+  return await env.DB.prepare("SELECT role FROM account_families WHERE account_id=? AND family_id=?").bind(accId, familyId).first();
+}
+/* e-posta gonder (Resend; key yoksa dry-run false doner) */
+async function sendEmail(env, to, subject, html){
+  if(!env.RESEND_API_KEY) return false;
+  try{
+    const r = await fetch("https://api.resend.com/emails", {
+      method:"POST",
+      headers:{ "Authorization":"Bearer "+env.RESEND_API_KEY, "content-type":"application/json" },
+      body: JSON.stringify({ from: env.MAIL_FROM || "Yıldız Avcıları <noreply@cryme.tr>", to:[to], subject, html })
+    });
+    return r.ok;
+  }catch(e){ return false; }
 }
 
 /* ---------- ogrenme SOHBETI (Cloudflare Workers AI, sokratik) ----------
@@ -301,6 +349,22 @@ async function getRootState(env, me){
   return { root:true, stats, families, chatLogs, me: safeUser(me) };
 }
 
+/* ---------- aile durumu (account-parent gorunumu icin; aile-kapsamli) ---------- */
+async function getFamilyState(env, fid, acc){
+  const sr = await env.DB.prepare("SELECT * FROM seasons WHERE family_id=? AND active=1 LIMIT 1").bind(fid).first();
+  const season = sr ? {id:sr.id, name:sr.name, end:sr.end_date, prize:sr.prize, goal:sr.goal} : null;
+  const fam = await env.DB.prepare("SELECT id,name FROM families WHERE id=?").bind(fid).first();
+  const users = ((await env.DB.prepare("SELECT * FROM users WHERE family_id=?").bind(fid).all()).results||[]).map(safeUser);
+  const completions = ((await env.DB.prepare("SELECT * FROM completions WHERE family_id=? ORDER BY ts DESC").bind(fid).all()).results||[]).map(c=>({
+    id:c.id, userId:c.user_id, taskId:c.task_id, date:c.date, week:c.week, ts:c.ts, status:c.status,
+    proof:{text:c.proof_text||"", photoKey:c.proof_photo_key||null}, aiNote:c.ai_note?{ok:c.ai_ok,note:c.ai_note}:null, approverId:c.approver_id }));
+  const customTasks = ((await env.DB.prepare("SELECT * FROM custom_tasks WHERE family_id=? AND status IN ('active','done')").bind(fid).all()).results||[]).map(c=>({id:c.id,childId:c.child_id,title:c.title,emoji:c.emoji,xp:c.xp,by:c.created_by,status:c.status}));
+  const checkpoints = ((await env.DB.prepare("SELECT * FROM checkpoints WHERE family_id=? AND status!='cancelled' ORDER BY threshold").bind(fid).all()).results||[]).map(c=>({id:c.id,childId:c.child_id,threshold:c.threshold,reward:c.reward,status:c.status,by:c.created_by,reachedTs:c.reached_ts}));
+  const rewards = (await env.DB.prepare("SELECT * FROM rewards_log WHERE family_id=? ORDER BY ts DESC").bind(fid).all()).results||[];
+  const chatLogs = ((await env.DB.prepare("SELECT * FROM chat_logs WHERE family_id=? ORDER BY ts DESC LIMIT 60").bind(fid).all()).results||[]).map(l=>({id:l.id,childId:l.child_id,messages:JSON.parse(l.messages||"[]"),result:l.result,ts:l.ts}));
+  return { family: fam?{id:fam.id,name:fam.name}:null, season, users, completions, customTasks, checkpoints, rewards, chatLogs, account:{id:acc.id,email:acc.email,name:acc.name} };
+}
+
 /* ---------- state (aile-kapsamli) ---------- */
 async function getState(env, me){
   if(me.is_root_admin) return getRootState(env, me);   // root: anonim sistem gorunumu
@@ -347,6 +411,8 @@ export async function onRequest(context){
   if(method==="POST"){ try{ body = await request.json(); }catch(e){ body = {}; } }
 
   try{
+    // GUVENLIK: imza sirri yoksa fail-closed (sabit fallback YOK; token sahteciligini onler)
+    if(!env.SESSION_SECRET) return json({error:"Sunucu yapılandırması eksik (SESSION_SECRET)"}, 500);
     /* --- public: aile kodu -> o ailenin login uyeleri (PIN yok; mahremiyet: yalniz ilk ad + avatar).
        Cok-aileli: kodu bilmeyen kimse baska ailenin cocuklarini goremez (GDPR/KVKK).
        Root admin: kendi login_code'u ile girer (aile listesine cikmaz). --- */
@@ -402,7 +468,262 @@ export async function onRequest(context){
       return json({ ok:true, reminded: approvers.size });
     }
 
-    /* --- bundan sonrasi auth ister --- */
+    /* ====================== HESAP (account) AUTH ====================== */
+    /* --- kayit (email + parola) --- */
+    if(route==="auth/register" && method==="POST"){
+      const email = String(body.email||"").trim().toLowerCase();
+      const pw = String(body.password||"");
+      const name = String(body.name||"").trim().slice(0,60);
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return bad("Geçerli bir e-posta gir");
+      if(pw.length<6) return bad("Parola en az 6 karakter olmalı");
+      if(await env.DB.prepare("SELECT id FROM accounts WHERE email=?").bind(email).first()) return bad("Bu e-posta zaten kayıtlı", 409);
+      const ph = await hashPassword(pw);
+      const id = "acc_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
+      const nm = name || email.split("@")[0];
+      await env.DB.prepare("INSERT INTO accounts (id,email,email_verified,pw_hash,pw_salt,pw_iter,name,created_ts,last_login) VALUES (?,?,0,?,?,?,?,?,?)")
+        .bind(id, email, ph.hash, ph.salt, ph.iter, nm, Date.now(), Date.now()).run();
+      return json({ token: await accountToken(env, id), account:{id, email, name:nm} });
+    }
+    /* --- giris (email + parola) --- */
+    if(route==="auth/login" && method==="POST"){
+      const email = String(body.email||"").trim().toLowerCase();
+      const pw = String(body.password||"");
+      const a = await env.DB.prepare("SELECT * FROM accounts WHERE email=?").bind(email).first();
+      let ok = false;
+      if(a && a.pw_hash){ ok = await verifyPassword(pw, a.pw_hash, a.pw_salt, a.pw_iter); }
+      else { await hashPassword(pw, "ZGVjb3lzYWx0", PBKDF2_ITER); }   // sabit-zaman: hesap yok/parolasiz da KDF calissin (enumeration onler)
+      if(!ok) return bad("E-posta veya parola hatalı", 401);
+      await env.DB.prepare("UPDATE accounts SET last_login=? WHERE id=?").bind(Date.now(), a.id).run();
+      return json({ token: await accountToken(env, a.id), account:{id:a.id, email:a.email, name:a.name} });
+    }
+
+    /* --- hangi giris yontemleri acik (frontend butonlari) --- */
+    if(route==="config" && method==="GET"){
+      return json({ google: !!env.GOOGLE_CLIENT_ID, googleClientId: env.GOOGLE_CLIENT_ID || null, emailCode: !!env.RESEND_API_KEY });
+    }
+
+    /* --- Google SSO: frontend ID token (credential) yollar, tokeninfo ile dogrula --- */
+    if(route==="auth/google" && method==="POST"){
+      const cid = env.GOOGLE_CLIENT_ID;
+      if(!cid) return bad("Google girişi henüz yapılandırılmadı", 501);
+      const cred = String(body.credential||"");
+      if(!cred) return bad("credential gerekli");
+      let info=null;
+      try{ const r = await fetch("https://oauth2.googleapis.com/tokeninfo?id_token="+encodeURIComponent(cred)); if(r.ok) info = await r.json(); }catch(e){}
+      const everified = info && (info.email_verified===true || info.email_verified==="true");
+      const issOk = info && (info.iss==="accounts.google.com" || info.iss==="https://accounts.google.com");
+      if(!info || info.aud !== cid || !info.email || !everified || !issOk) return bad("Google doğrulaması başarısız", 401);   // email_verified + iss zorunlu (hesap ele gecirme onler)
+      const email = String(info.email).toLowerCase(), sub = info.sub;
+      let a = await env.DB.prepare("SELECT * FROM accounts WHERE google_sub=? OR email=?").bind(sub, email).first();
+      if(!a){
+        const id = "acc_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
+        await env.DB.prepare("INSERT INTO accounts (id,email,email_verified,google_sub,name,created_ts,last_login) VALUES (?,?,1,?,?,?,?)")
+          .bind(id, email, sub, info.name||email.split("@")[0], Date.now(), Date.now()).run();
+        a = {id, email, name: info.name||email.split("@")[0]};
+      } else if(!a.google_sub){
+        await env.DB.prepare("UPDATE accounts SET google_sub=?, email_verified=1, last_login=? WHERE id=?").bind(sub, Date.now(), a.id).run();
+      } else {
+        await env.DB.prepare("UPDATE accounts SET last_login=? WHERE id=?").bind(Date.now(), a.id).run();
+      }
+      return json({ token: await accountToken(env, a.id), account:{id:a.id, email:a.email||email, name:a.name||info.name} });
+    }
+
+    /* --- e-postaya kod iste (passwordless) --- */
+    if(route==="auth/email-code/request" && method==="POST"){
+      if(!env.RESEND_API_KEY) return bad("E-posta ile kod henüz yapılandırılmadı", 501);
+      const email = String(body.email||"").trim().toLowerCase();
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return bad("Geçerli bir e-posta gir");
+      // rate-limit: ayni e-postaya 45 sn'de bir koddan fazla yok (spam/e-posta bombasi onler)
+      const prev = await env.DB.prepare("SELECT exp FROM email_codes WHERE email=?").bind(email).first();
+      if(prev && (Date.now() - (prev.exp - 10*60*1000)) < 45000) return bad("Az önce kod gönderildi, biraz bekle", 429);
+      const code = ""+(100000+Math.floor(Math.random()*900000));
+      const ph = await hashPassword(code, null, 50000);
+      await env.DB.prepare("INSERT INTO email_codes (email,code_hash,exp,tries) VALUES (?,?,?,0) ON CONFLICT(email) DO UPDATE SET code_hash=excluded.code_hash, exp=excluded.exp, tries=0")
+        .bind(email, ph.salt+":"+ph.hash, Date.now()+10*60*1000).run();
+      await sendEmail(env, email, "Yıldız Avcıları giriş kodu", "<p>Giriş kodun: <b style='font-size:22px'>"+code+"</b></p><p>10 dakika geçerli. Sen istemediysen yok say.</p>");
+      return json({ ok:true });
+    }
+    /* --- e-posta kodunu dogrula -> hesap olustur/giris --- */
+    if(route==="auth/email-code/verify" && method==="POST"){
+      const email = String(body.email||"").trim().toLowerCase();
+      const code = String(body.code||"").trim();
+      const row = await env.DB.prepare("SELECT * FROM email_codes WHERE email=?").bind(email).first();
+      if(!row || row.exp < Date.now()) return bad("Kodun süresi doldu, yeniden iste", 401);
+      if((row.tries||0) >= 5) return bad("Çok fazla deneme, yeni kod iste", 429);
+      const sp = String(row.code_hash).split(":");
+      const ok = await verifyPassword(code, sp[1]||"", sp[0]||"", 50000);
+      if(!ok){ await env.DB.prepare("UPDATE email_codes SET tries=tries+1 WHERE email=?").bind(email).run(); return bad("Kod hatalı", 401); }
+      await env.DB.prepare("DELETE FROM email_codes WHERE email=?").bind(email).run();
+      let a = await env.DB.prepare("SELECT * FROM accounts WHERE email=?").bind(email).first();
+      if(!a){
+        const id = "acc_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
+        await env.DB.prepare("INSERT INTO accounts (id,email,email_verified,name,created_ts,last_login) VALUES (?,?,1,?,?,?)").bind(id, email, email.split("@")[0], Date.now(), Date.now()).run();
+        a = {id, email, name: email.split("@")[0]};
+      } else { await env.DB.prepare("UPDATE accounts SET email_verified=1, last_login=? WHERE id=?").bind(Date.now(), a.id).run(); }
+      return json({ token: await accountToken(env, a.id), account:{id:a.id, email:a.email, name:a.name} });
+    }
+
+    /* --- account/* : hesap oturumu gerekir --- */
+    if(route==="account" || route.startsWith("account/")){
+      const acc = await authAccount(request, env);
+      if(!acc) return bad("Yetkisiz", 401);
+
+      // hesap durumu: aileler + cocuk profilleri + co-parent'lar + bekleyen davetler
+      if(route==="account/state" && method==="GET"){
+        const fams = (await env.DB.prepare("SELECT f.id, f.name, af.role FROM account_families af JOIN families f ON f.id=af.family_id WHERE af.account_id=? ORDER BY af.added_ts").bind(acc.id).all()).results||[];
+        const families=[];
+        for(const f of fams){
+          const kids = (await env.DB.prepare("SELECT id,name,age,av,theme,pin FROM users WHERE family_id=? AND role='child'").bind(f.id).all()).results||[];
+          const co = (await env.DB.prepare("SELECT a.email, af.role FROM account_families af JOIN accounts a ON a.id=af.account_id WHERE af.family_id=? AND af.account_id!=?").bind(f.id, acc.id).all()).results||[];
+          const inv = (await env.DB.prepare("SELECT email, role FROM family_invites WHERE family_id=? AND status='pending'").bind(f.id).all()).results||[];
+          families.push({ id:f.id, name:f.name, role:f.role,
+            children: kids.map(k=>({id:k.id, name:k.name, age:k.age, av:k.av, theme:k.theme, hasPin: !!(k.pin && String(k.pin)!=="")})),
+            coParents: co.map(c=>({email:c.email, role:c.role})),
+            pendingInvites: inv.map(i=>({email:i.email, role:i.role})) });
+        }
+        return json({ account:{id:acc.id, email:acc.email, name:acc.name}, families });
+      }
+
+      // ebeveyn: kanit fotografi (R2) - aile yetkisiyle (token URL'de degil, header ile)
+      if(seg[0]==="account" && seg[1]==="proof" && method==="GET"){
+        const key = seg.slice(2).join("/");
+        const childId = key.split("/")[1] || "";
+        const owner = await env.DB.prepare("SELECT family_id FROM users WHERE id=?").bind(childId).first();
+        if(!owner || !await accountInFamily(env, acc.id, owner.family_id)) return bad("Yetkisiz", 403);
+        const obj = await env.PROOFS.get(key);
+        if(!obj) return bad("Foto yok", 404);
+        return new Response(obj.body, {headers:{"content-type":"image/jpeg","cache-control":"private, max-age=3600"}});
+      }
+
+      // aile olustur (sahip = bu hesap) + varsayilan sezon
+      if(route==="account/create-family" && method==="POST"){
+        const name = String(body.name||"").trim().slice(0,40);
+        if(!name) return bad("Aile adı gir");
+        const fid = "fam_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
+        await env.DB.prepare("INSERT INTO families (id,name,code,owner_id,created_ts,owner_account_id) VALUES (?,?,?,?,?,?)")
+          .bind(fid, name, genCode(8), null, Date.now(), acc.id).run();
+        await env.DB.prepare("INSERT INTO account_families (account_id,family_id,role,added_ts) VALUES (?,?,'owner',?)").bind(acc.id, fid, Date.now()).run();
+        const end = new Date(Date.now()+30*86400000).toISOString().slice(0,10);
+        await env.DB.prepare("INSERT INTO seasons (id,name,end_date,prize,goal,active,family_id) VALUES (?,?,?,?,?,1,?)")
+          .bind("s_"+Date.now()+"_"+Math.floor(Math.random()*1e6), "1. Sezon", end, "sürpriz", 1000, fid).run();
+        return json({ ok:true, family:{id:fid, name} });
+      }
+
+      // e-postasiz cocuk profili ekle (PIN opsiyonel)
+      if(route==="account/add-child" && method==="POST"){
+        const { familyId, name, age, av, pin } = body;
+        if(!familyId || !name || !String(name).trim()) return bad("Aile ve çocuk adı gerekli");
+        if(!await accountInFamily(env, acc.id, familyId)) return bad("Bu aile sizin değil", 403);
+        const cid = "u_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
+        const pinVal = (pin!=null && String(pin).trim()!=="") ? String(pin).trim().slice(0,8) : "";
+        await env.DB.prepare("INSERT INTO users (id,role,name,age,pin,av,family_id) VALUES (?,'child',?,?,?,?,?)")
+          .bind(cid, String(name).trim().slice(0,40), parseInt(age)||null, pinVal, (av||"🙂").slice(0,4), familyId).run();
+        return json({ ok:true, child:{id:cid, name:String(name).trim(), av:av||"🙂"} });
+      }
+
+      // cocuk profiline gec: aile-bagli hesap, cocugun PIN'i varsa dogrula -> cocuk token'i
+      if(route==="account/child-token" && method==="POST"){
+        const child = await env.DB.prepare("SELECT id, family_id, pin FROM users WHERE id=? AND role='child'").bind(body.childId).first();
+        if(!child) return bad("Çocuk yok", 404);
+        if(!await accountInFamily(env, acc.id, child.family_id)) return bad("Yetkisiz", 403);
+        if(child.pin && String(child.pin)!=="" && String(child.pin)!==String(body.pin||"")) return bad("PIN hatalı", 401);
+        const token = await signToken({uid:child.id, role:"child", exp:Date.now()+ACCOUNT_TTL}, env.SESSION_SECRET||"dev-secret-change-me");
+        return json({ token, childId:child.id });
+      }
+
+      // ebeveyn aile panosu (onay vb.) - aile-kapsamli veri
+      if(route==="account/family-state" && method==="GET"){
+        const familyId = (()=>{ try{ return new URL(request.url).searchParams.get("familyId")||""; }catch(e){ return ""; } })();
+        if(!await accountInFamily(env, acc.id, familyId)) return bad("Yetkisiz", 403);
+        return json(await getFamilyState(env, familyId, acc));
+      }
+
+      // ebeveyn karar (onay/ret)
+      if(route==="account/decide" && method==="POST"){
+        const { compId, decision } = body;
+        if(!["approved","rejected"].includes(decision)) return bad("Geçersiz karar");
+        const comp = await env.DB.prepare("SELECT * FROM completions WHERE id=?").bind(compId).first();
+        if(!comp) return bad("Kayıt yok", 404);
+        if(!await accountInFamily(env, acc.id, comp.family_id)) return bad("Yetkisiz", 403);
+        await env.DB.prepare("UPDATE completions SET status=?, approver_id=? WHERE id=?").bind(decision, "acc:"+acc.id, compId).run();
+        if(decision==="approved" && String(comp.task_id).startsWith("ct_")) await env.DB.prepare("UPDATE custom_tasks SET status='done' WHERE id=?").bind(comp.task_id).run();
+        if(decision==="approved"){ await checkReward(env, comp.user_id); await checkCheckpoints(env, comp.user_id); }
+        return json({ ok:true });
+      }
+
+      // ebeveyn: cocuga ozel gorev ekle
+      if(route==="account/custom-task" && method==="POST"){
+        const { familyId, childId, title, emoji, xp } = body;
+        if(!familyId || !childId || !title || !String(title).trim()) return bad("Çocuk ve görev adı gerekli");
+        if(!await accountInFamily(env, acc.id, familyId)) return bad("Yetkisiz", 403);
+        const ch = await env.DB.prepare("SELECT family_id FROM users WHERE id=? AND role='child'").bind(childId).first();
+        if(!ch || ch.family_id !== familyId) return bad("Bu çocuk bu ailede değil", 403);
+        const id = "ct_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
+        const x = Math.max(1, Math.min(50, parseInt(xp)||10));
+        await env.DB.prepare("INSERT INTO custom_tasks (id,child_id,created_by,title,emoji,xp,status,ts,family_id) VALUES (?,?,?,?,?,?, 'active', ?, ?)")
+          .bind(id, childId, "acc:"+acc.id, String(title).trim().slice(0,60), (emoji||"⭐").slice(0,4), x, Date.now(), familyId).run();
+        return json({ ok:true, id });
+      }
+      // ebeveyn: ozel gorev iptal
+      if(route==="account/custom-cancel" && method==="POST"){
+        const ct = await env.DB.prepare("SELECT * FROM custom_tasks WHERE id=?").bind(body.id).first();
+        if(!ct) return bad("Görev yok", 404);
+        if(!await accountInFamily(env, acc.id, ct.family_id)) return bad("Yetkisiz", 403);
+        await env.DB.prepare("UPDATE custom_tasks SET status='cancelled' WHERE id=?").bind(body.id).run();
+        return json({ ok:true });
+      }
+      // ebeveyn: ara odul ekle
+      if(route==="account/checkpoint" && method==="POST"){
+        const { familyId, childId, threshold, reward } = body;
+        const th = parseInt(threshold);
+        if(!familyId || !childId || !reward || !String(reward).trim() || !th || th<1) return bad("Çocuk, eşik ve ödül gerekli");
+        if(!await accountInFamily(env, acc.id, familyId)) return bad("Yetkisiz", 403);
+        const ch = await env.DB.prepare("SELECT family_id FROM users WHERE id=? AND role='child'").bind(childId).first();
+        if(!ch || ch.family_id !== familyId) return bad("Bu çocuk bu ailede değil", 403);
+        const id = "cp_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
+        await env.DB.prepare("INSERT INTO checkpoints (id,child_id,created_by,threshold,reward,status,ts,family_id) VALUES (?,?,?,?,?, 'pending', ?, ?)")
+          .bind(id, childId, "acc:"+acc.id, th, String(reward).trim().slice(0,60), Date.now(), familyId).run();
+        await checkCheckpoints(env, childId);
+        return json({ ok:true, id });
+      }
+      // ebeveyn: checkpoint iptal / verildi
+      if((route==="account/checkpoint-cancel" || route==="account/checkpoint-given") && method==="POST"){
+        const cp = await env.DB.prepare("SELECT * FROM checkpoints WHERE id=?").bind(body.id).first();
+        if(!cp) return bad("Kayıt yok", 404);
+        if(!await accountInFamily(env, acc.id, cp.family_id)) return bad("Yetkisiz", 403);
+        await env.DB.prepare("UPDATE checkpoints SET status=? WHERE id=?").bind(route==="account/checkpoint-given"?"given":"cancelled", body.id).run();
+        return json({ ok:true });
+      }
+
+      // e-posta daveti olustur (cocuk|ebeveyn olarak isaretle). Link doner; e-posta gonderimi servis gelince sarilir.
+      if(route==="account/invite" && method==="POST"){
+        const r = body.role==="child" ? "child" : "parent";
+        const em = String(body.email||"").trim().toLowerCase();
+        if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return bad("Geçerli bir e-posta gir");
+        const link = await accountInFamily(env, acc.id, body.familyId);
+        if(!link) return bad("Yetkisiz", 403);
+        const tok = genCode(20);
+        await env.DB.prepare("INSERT INTO family_invites (id,family_id,email,role,invited_by,token,status,ts) VALUES (?,?,?,?,?,?, 'pending', ?)")
+          .bind("inv_"+Date.now()+"_"+Math.floor(Math.random()*1e6), body.familyId, em, r, acc.id, tok, Date.now()).run();
+        return json({ ok:true, inviteToken:tok, role:r });   // TODO: e-posta servisi ile linki gonder
+      }
+      // daveti kabul et (giris yapmis hesap aileye baglanir). Su an parent daveti; e-postali cocuk ileride.
+      if(route==="account/accept-invite" && method==="POST"){
+        const inv = await env.DB.prepare("SELECT * FROM family_invites WHERE token=? AND status='pending'").bind(String(body.token||"")).first();
+        if(!inv) return bad("Davet bulunamadı veya kullanılmış", 404);
+        if(inv.role!=="parent") return bad("E-postalı çocuk daveti yakında; şimdilik e-postasız çocuk profili ekleyin", 400);
+        // davet, gonderildigi e-postaya BAGLI: linki ele geciren baskasi katilamaz (yetki yukseltme onler)
+        if(!acc.email || String(inv.email).toLowerCase() !== String(acc.email).toLowerCase())
+          return bad("Bu davet bu hesaba ait değil. Davetin gönderildiği e-posta ile giriş yap.", 403);
+        await env.DB.prepare("INSERT OR IGNORE INTO account_families (account_id,family_id,role,added_ts) VALUES (?,?,'parent',?)").bind(acc.id, inv.family_id, Date.now()).run();
+        await env.DB.prepare("UPDATE family_invites SET status='accepted' WHERE id=?").bind(inv.id).run();
+        return json({ ok:true, familyId: inv.family_id });
+      }
+
+      return bad("Bilinmeyen hesap ucu: "+route, 404);
+    }
+
+    /* --- bundan sonrasi (eski PIN/cocuk) auth ister --- */
     const me = await auth(request, env);
     if(!me) return bad("Yetkisiz", 401);
 

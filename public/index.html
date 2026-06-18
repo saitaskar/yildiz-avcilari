@@ -265,33 +265,33 @@
     <p>Yıldızları topla, ödülü aç!</p>
   </div>
   <div class="wrap" style="padding-top:0;">
-    <!-- AILE KODU GIRISI -->
-    <div class="card hidden" id="codeCard">
-      <h2 style="margin:2px 0 4px;text-align:center">Aileye giriş</h2>
-      <p class="sub" style="text-align:center;margin-bottom:14px">Aile kodunu gir. Kod yalnız bir kez gerekir, bu cihaz hatırlar.</p>
-      <input id="codeInput" placeholder="Aile kodu" maxlength="16" autocapitalize="characters" autocomplete="off" spellcheck="false"
-        style="width:100%;box-sizing:border-box;padding:14px;font-size:20px;text-align:center;letter-spacing:3px;text-transform:uppercase;border:2px solid var(--line);border-radius:14px;margin-bottom:6px;font-weight:800;color:var(--primary-dark)">
-      <div class="pin-err" id="codeErr"></div>
-      <button class="btn-primary" style="width:100%" onclick="submitCode()">Gir</button>
-      <button class="btn-ghost" style="width:100%;margin-top:10px" onclick="showRegisterSoon()">✨ Yeni aile oluştur</button>
-    </div>
-    <!-- UYE SECIMI -->
-    <div class="card hidden" id="memberCard">
-      <div id="familyHead"></div>
-      <div class="role-grid" id="roleGrid">
-        <button class="role-btn active" data-role="child"><span class="ico">🧒</span>Çocuk</button>
-        <button class="role-btn" data-role="approver"><span class="ico">👨‍👩‍👧</span>Ebeveyn</button>
+    <div class="card" id="authCard">
+      <div class="seg" style="margin-bottom:14px">
+        <button id="tabLogin" class="active" onclick="setAuthTab('login')">Giriş</button>
+        <button id="tabSignup" onclick="setAuthTab('signup')">Kayıt ol</button>
       </div>
-      <div class="name-list" id="nameList"></div>
-      <div class="pin-box hidden" id="pinBox">
-        <div class="sub" style="text-align:center" id="pinFor"></div>
-        <div class="pin-dots" id="pinDots"></div>
-        <div class="pin-err" id="pinErr"></div>
-        <div class="keypad" id="keypad"></div>
-      </div>
-      <button class="btn-ghost" style="width:100%;margin-top:12px" onclick="changeFamily()">↩︎ Başka aile / kodu değiştir</button>
+      <div id="authGoogle"></div>
+      <input id="authName" class="hidden" placeholder="Adın" autocomplete="name"
+        style="width:100%;box-sizing:border-box;padding:13px;font-size:15px;border:2px solid var(--line);border-radius:12px;margin-bottom:10px">
+      <input id="authEmail" type="email" placeholder="E-posta" autocomplete="email" inputmode="email"
+        style="width:100%;box-sizing:border-box;padding:13px;font-size:15px;border:2px solid var(--line);border-radius:12px;margin-bottom:10px">
+      <input id="authPass" type="password" placeholder="Parola" autocomplete="current-password"
+        style="width:100%;box-sizing:border-box;padding:13px;font-size:15px;border:2px solid var(--line);border-radius:12px;margin-bottom:6px">
+      <div class="pin-err" id="authErr"></div>
+      <button class="btn-primary" style="width:100%" id="authSubmit" onclick="submitAuth()">Giriş yap</button>
+      <button class="btn-ghost hidden" id="authEmailCodeBtn" style="width:100%;margin-top:10px" onclick="startEmailCode()">✉️ Parola yerine e-postama kod gönder</button>
+      <div style="text-align:center;margin-top:14px"><span onclick="rootLoginPrompt()" style="font-size:11px;color:var(--muted);cursor:pointer">sistem yönetimi</span></div>
     </div>
   </div>
+</div>
+
+<!-- ============ ACCOUNT HOME (pano) ============ -->
+<div id="accountView" class="hidden">
+  <div class="topbar">
+    <div class="brand">🌟 <span>Yıldız Avcıları</span></div>
+    <div class="who"><span id="accWho"></span><button class="btn-logout" onclick="logoutAccount()">Çıkış</button></div>
+  </div>
+  <div class="wrap" id="accountBody"></div>
 </div>
 
 <!-- ============ APP ============ -->
@@ -301,8 +301,9 @@
     <div class="who">
       <span id="notifBadge" class="notif-badge hidden"></span>
       <span id="whoLabel"></span>
+      <button class="btn-logout hidden" id="backToAccBtn" onclick="backToAccount()" title="Hesaba dön">← Hesap</button>
       <button class="btn-logout" onclick="manualRefresh()" title="Yenile">🔄</button>
-      <button class="btn-logout" onclick="logout()">Çıkış</button>
+      <button class="btn-logout" onclick="appExit()">Çıkış</button>
     </div>
   </div>
   <div class="wrap" id="appBody"></div>
@@ -527,12 +528,36 @@ async function api(path, opts={}){
   return data;
 }
 async function refreshState(){
-  const d = await api("/state");
+  if(authMode==="parent"){   // ebeveyn modu: hesap token'i ile aile durumu
+    const d = await api("/account/family-state?familyId="+encodeURIComponent(currentFamilyId));
+    const kids = (d.users||[]).filter(u=>u.role==="child").map(u=>u.id);
+    state = { season:d.season, users:d.users||[], completions:d.completions||[], customTasks:d.customTasks||[], checkpoints:d.checkpoints||[], chatLogs:d.chatLogs||[], rewards:d.rewards||[], family:d.family||null };
+    session = { id:"acc:"+(account?account.id:""), role:"approver", name:(account?(account.name||account.email):"Ebeveyn"), title:"Ebeveyn", av:"👤", kids, isRoot:0 };
+    return;
+  }
+  const d = await api("/state");   // cocuk veya root token'i
   if(d.root){ state = { root:true, stats:d.stats||{}, families:d.families||[], chatLogs:d.chatLogs||[] }; if(d.me) session=d.me; return; }
   state = { season:d.season, users:d.users||[], completions:d.completions||[], customTasks:d.customTasks||[], checkpoints:d.checkpoints||[], chatLogs:d.chatLogs||[], rewards:d.rewards||[], family:d.family||null };
   const me = (d.users||[]).find(u=>u.id===session.id); if(me) session = me;  // tema vb. guncel
 }
 function user(id){ return state.users.find(u=>u.id===id); }
+/* ebeveyn modunda yazma uclari -> /account/* (+ familyId); cocuk/root modda -> /api/* */
+async function pwrite(path, body){
+  if(authMode==="parent") return api("/account"+path, {method:"POST", body:Object.assign({familyId:currentFamilyId}, body||{})});
+  return api(path, {method:"POST", body:body||{}});
+}
+/* kanit fotograflarini Authorization header ile cek (token URL'ye GIRMEZ) -> blob */
+async function hydrateProofs(){
+  const imgs = document.querySelectorAll("img.proofimg[data-key]");
+  for(const img of imgs){
+    if(img.dataset.loaded) continue;
+    const path = (authMode==="parent" ? "/account/proof/" : "/proof/") + img.dataset.key;
+    try{
+      const r = await fetch(API+path, {headers:{Authorization:"Bearer "+authToken}});
+      if(r.ok){ img.src = URL.createObjectURL(await r.blob()); img.dataset.loaded="1"; }
+    }catch(e){}
+  }
+}
 
 /* ---- oturum kaliciligi: 5 dk, ortak PC dostu (her cocuk kendi token'i) ---- */
 const TOKEN_STORE = "gp_tokens";
@@ -697,139 +722,270 @@ function timeAgo(ts){
   return new Date(ts).toLocaleDateString("tr-TR");
 }
 
-/* ---- aile kodu akisi (cok-aileli giris) ---- */
-function showCodeEntry(){
-  document.getElementById("brandTitle").textContent = APP_NAME;
-  document.getElementById("codeCard").classList.remove("hidden");
-  document.getElementById("memberCard").classList.add("hidden");
-  const err=document.getElementById("codeErr"); if(err) err.textContent="";
-  const inp=document.getElementById("codeInput");
-  if(inp){ inp.value=""; inp.onkeydown=(ev)=>{ if(ev.key==="Enter"){ ev.preventDefault(); submitCode(); } }; setTimeout(()=>{ try{inp.focus();}catch(e){} }, 120); }
+/* ---- HESAP (account) auth: email+parola / Google / e-postaya-kod ---- */
+let authMode = "account";   // "account" | "child" | "parent" | "root"
+let account = null;         // {id,email,name}
+let accountFamilies = [];   // /account/state -> families
+let currentFamilyId = null; // ebeveyn modunda secili aile
+let authTab = "login";
+let appConfig = { google:false, googleClientId:null, emailCode:false };
+let pendingInvite = null;
+const ACC_TOKEN_KEY = "gp_acc_token";   // kalici hesap oturumu (storage temizlenene kadar)
+
+function setAuthTab(t){
+  authTab = t;
+  document.getElementById("tabLogin").classList.toggle("active", t==="login");
+  document.getElementById("tabSignup").classList.toggle("active", t==="signup");
+  document.getElementById("authName").classList.toggle("hidden", t!=="signup");
+  document.getElementById("authPass").setAttribute("autocomplete", t==="signup"?"new-password":"current-password");
+  document.getElementById("authSubmit").textContent = t==="signup"?"Kayıt ol":"Giriş yap";
+  document.getElementById("authErr").textContent="";
 }
-async function submitCode(preset){
-  const inp=document.getElementById("codeInput");
-  const code = String(preset || (inp?inp.value:"") || "").trim().toUpperCase();
-  const err=document.getElementById("codeErr");
-  if(!code){ if(err) err.textContent="Kodu gir"; return; }
-  if(err && !preset) err.textContent="Kontrol ediliyor...";
+async function loadConfig(){
+  try{ appConfig = await api("/config"); }catch(e){ appConfig={google:false,emailCode:false}; }
+  const ec=document.getElementById("authEmailCodeBtn"); if(ec) ec.classList.toggle("hidden", !appConfig.emailCode);
+  if(appConfig.google && appConfig.googleClientId) initGoogle(appConfig.googleClientId);
+}
+async function submitAuth(){
+  const email=document.getElementById("authEmail").value.trim().toLowerCase();
+  const pass=document.getElementById("authPass").value;
+  const name=document.getElementById("authName").value.trim();
+  const err=document.getElementById("authErr"); err.textContent="";
+  if(!email||!pass){ err.textContent="E-posta ve parola gir"; return; }
+  err.textContent="Lütfen bekle...";
   try{
-    const d = await api("/lookup", {method:"POST", body:{code}});
-    familyCtx = d;
-    loginUsers = d.members || [];
-    loginRole = (d.kind==="root") ? "root" : "child";
-    pinTarget=null; pinDraft="";
-    localStorage.setItem(FAMILY_CODE_KEY, code);
-    renderMembers();
-  }catch(e){
-    localStorage.removeItem(FAMILY_CODE_KEY);
-    if(preset){ showCodeEntry(); }
-    const e2=document.getElementById("codeErr"); if(e2) e2.textContent="Kod bulunamadı, tekrar dene";
-  }
+    const d = await api(authTab==="signup"?"/auth/register":"/auth/login", {method:"POST", body:{email, password:pass, name}});
+    onAccountAuthed(d);
+  }catch(e){ err.textContent = e.message || "Giriş başarısız"; }
 }
-function changeFamily(){
-  localStorage.removeItem(FAMILY_CODE_KEY);
-  familyCtx=null; loginUsers=[]; pinTarget=null; pinDraft="";
-  showCodeEntry();
+function onAccountAuthed(d){
+  authToken = d.token; account = d.account; authMode="account";
+  localStorage.setItem(ACC_TOKEN_KEY, d.token);
+  if(pendingInvite){ const t=pendingInvite; pendingInvite=null; tryAcceptInvite(t).finally(showAccountHome); }
+  else showAccountHome();
 }
-function showRegisterSoon(){
-  showModal(`<div style="text-align:center">
-    <div style="font-size:44px">✨</div>
-    <h3 style="margin:8px 0 2px">Yeni aile oluşturma çok yakında</h3>
-    <div class="sub" style="margin:10px 0">Şu an aileler davet kodu ile katılıyor. Kendi aileni kurmak istersen kod alabilirsin.</div>
-    <button class="btn-primary" style="width:100%" onclick="closeModal()">Tamam</button></div>`);
-}
-function renderMembers(){
-  document.getElementById("codeCard").classList.add("hidden");
-  document.getElementById("memberCard").classList.remove("hidden");
-  const head=document.getElementById("familyHead");
-  const roleGrid=document.getElementById("roleGrid");
-  if(familyCtx && familyCtx.kind==="root"){
-    head.innerHTML = `<div style="text-align:center;margin-bottom:6px"><div style="font-size:30px">🛡️</div><div style="font-weight:800;color:var(--primary-dark)">Sistem Yönetimi</div></div>`;
-    roleGrid.classList.add("hidden");
-    loginRole="root";
-  }else{
-    const fname = (familyCtx && familyCtx.family) ? familyCtx.family.name : "Aile";
-    head.innerHTML = `<div style="text-align:center;margin-bottom:12px"><div style="font-size:12px;color:var(--muted);letter-spacing:1px">AİLE</div><div style="font-weight:800;font-size:19px;color:var(--primary-dark)">${escapeHtml(fname)}</div></div>`;
-    roleGrid.classList.remove("hidden");
-    if(loginRole!=="child" && loginRole!=="approver") loginRole="child";
-  }
-  renderLogin();
+async function tryAcceptInvite(tok){
+  try{ await api("/account/accept-invite",{method:"POST",body:{token:tok}}); toast("Aileye katıldın 🎉"); }
+  catch(e){ toast(e.message||"Davet kabul edilemedi"); }
+  finally{ try{ history.replaceState(null,"",location.pathname); }catch(e){} }   // ?invite'i temizle
 }
 
-function renderLogin(){
-  document.getElementById("brandTitle").textContent = APP_NAME;
-  document.querySelectorAll(".role-btn").forEach(b=>{
-    b.classList.toggle("active", b.dataset.role===loginRole);
-    b.onclick = ()=>{ loginRole=b.dataset.role; pinTarget=null; renderLogin(); };
-  });
-  const list = document.getElementById("nameList");
-  const people = loginUsers.filter(u=>u.role===loginRole);
-  list.innerHTML = people.map(u=>`
-    <div class="name-item ${pinTarget&&pinTarget.id===u.id?'active':''}" onclick="pickUser('${u.id}')">
-      <div class="av">${escapeHtml(u.av)}</div>
-      <div>${escapeHtml(u.name)}<small>${u.role==='child'?'Yıldız Avcısı':''}</small></div>
-    </div>`).join("");
-  document.getElementById("pinBox").classList.toggle("hidden", !pinTarget);
-  if(pinTarget){
-    document.getElementById("pinFor").textContent = pinTarget.name + " - PIN gir";
-    renderPin();
-    renderKeypad();
-  }
+/* --- Google Identity (env'de GOOGLE_CLIENT_ID varsa) --- */
+let _googleInited=false;
+function initGoogle(clientId){
+  const mount=document.getElementById("authGoogle"); if(!mount || _googleInited) return;
+  const s=document.createElement("script"); s.src="https://accounts.google.com/gsi/client"; s.async=true; s.defer=true;
+  s.onload=()=>{ try{
+    google.accounts.id.initialize({ client_id:clientId, callback:onGoogleCredential });
+    google.accounts.id.renderButton(mount, { theme:"outline", size:"large", width:300, text:"continue_with" });
+    mount.style.marginBottom="12px"; _googleInited=true;
+  }catch(e){} };
+  document.head.appendChild(s);
 }
-function pickUser(id){
-  const saved = getSavedToken(id);
-  if(saved){ authToken=saved; quickLogin(id); return; }   // 5 dk icinde tekrar: PIN'siz
-  pinTarget=loginUsers.find(u=>u.id===id); pinDraft=""; document.getElementById("pinErr").textContent=""; renderLogin();
+async function onGoogleCredential(resp){
+  const err=document.getElementById("authErr"); err.textContent="Google ile giriliyor...";
+  try{ onAccountAuthed(await api("/auth/google",{method:"POST",body:{credential:resp.credential}})); }
+  catch(e){ err.textContent="Google girişi başarısız"; }
 }
-async function quickLogin(id){
+
+/* --- e-postaya kod (passwordless) --- */
+async function startEmailCode(){
+  const email=document.getElementById("authEmail").value.trim().toLowerCase();
+  const err=document.getElementById("authErr");
+  if(!email){ err.textContent="Önce e-postanı yaz"; return; }
+  err.textContent="Kod gönderiliyor...";
   try{
-    const d = await api("/state");          // token gecerliyse me doner
-    session = d.me;
-    if(d.root){ state = { root:true, stats:d.stats||{}, families:d.families||[], chatLogs:d.chatLogs||[] }; }
-    else { state = { season:d.season, users:d.users||[], completions:d.completions||[], customTasks:d.customTasks||[], checkpoints:d.checkpoints||[], chatLogs:d.chatLogs||[], rewards:d.rewards||[], family:d.family||null }; }
-    saveToken(id, authToken);               // suresini tazele
-    enterApp();
-  }catch(e){
-    clearSavedToken(id); authToken=null;    // token bozuk/eski: PIN'e dus
-    pinTarget=loginUsers.find(u=>u.id===id); pinDraft=""; renderLogin();
-  }
+    await api("/auth/email-code/request",{method:"POST",body:{email}}); err.textContent="";
+    showModal(`<div style="text-align:center"><div style="font-size:40px">✉️</div><h3>Kodu gir</h3>
+      <div class="sub" style="margin:8px 0">${escapeHtml(email)} adresine 6 haneli kod gönderdik.</div>
+      <input id="ecInput" inputmode="numeric" maxlength="6" placeholder="000000" style="width:100%;box-sizing:border-box;padding:13px;font-size:22px;text-align:center;letter-spacing:6px;border:2px solid var(--line);border-radius:12px;margin-bottom:8px">
+      <div class="pin-err" id="ecErr"></div>
+      <button class="btn-primary" style="width:100%" onclick="verifyEmailCode('${encodeURIComponent(email)}')">Giriş yap</button></div>`);
+    setTimeout(()=>{const i=document.getElementById("ecInput");if(i)i.focus();},150);
+  }catch(e){ err.textContent = e.message||"Gönderilemedi"; }
 }
-function renderPin(){
-  const dots = document.getElementById("pinDots");
-  const n = Math.max(4, pinDraft.length);   // en az 4 nokta, uzun PIN'de uzar
-  let html="";
-  for(let i=0;i<n;i++) html += `<div class="pin-dot ${i<pinDraft.length?'filled':''}"></div>`;
-  dots.innerHTML = html;
+async function verifyEmailCode(emailEnc){
+  const email=decodeURIComponent(emailEnc);
+  const code=document.getElementById("ecInput").value.trim();
+  const err=document.getElementById("ecErr"); err.textContent="";
+  try{ const d=await api("/auth/email-code/verify",{method:"POST",body:{email,code}}); closeModal(); onAccountAuthed(d); }
+  catch(e){ err.textContent=e.message||"Kod hatalı"; }
 }
-function renderKeypad(){
-  const kp = document.getElementById("keypad");
-  const keys = ["1","2","3","4","5","6","7","8","9","sil","0","ok"];
-  kp.innerHTML = keys.map(k=>{
-    if(k==="sil") return `<button class="key wide" onclick="pinKey('sil')">⌫</button>`;
-    if(k==="ok")  return `<button class="key wide" onclick="pinKey('ok')">Giriş</button>`;
-    return `<button class="key" onclick="pinKey('${k}')">${k}</button>`;
-  }).join("");
+
+/* --- root (sistem) girisi: ayri kod + PIN --- */
+function rootLoginPrompt(){
+  showModal(`<div style="text-align:center"><div style="font-size:34px">🛡️</div><h3>Sistem yönetimi</h3>
+    <input id="rootCode" placeholder="Root kodu" autocapitalize="characters" style="width:100%;box-sizing:border-box;padding:12px;border:2px solid var(--line);border-radius:10px;margin:10px 0 6px;text-align:center;text-transform:uppercase">
+    <input id="rootPin" inputmode="numeric" type="password" placeholder="PIN" style="width:100%;box-sizing:border-box;padding:12px;border:2px solid var(--line);border-radius:10px;margin-bottom:6px;text-align:center">
+    <div class="pin-err" id="rootErr"></div>
+    <button class="btn-primary" style="width:100%" onclick="rootLogin()">Gir</button></div>`);
 }
-function pinKey(k){
-  const err=document.getElementById("pinErr"); err.textContent="";
-  if(k==="sil"){ pinDraft=pinDraft.slice(0,-1); renderPin(); return; }
-  if(k==="ok"){ tryLogin(); return; }       // "Giris" ile onay (degisken uzunluk: 4-8 hane)
-  if(pinDraft.length<8){ pinDraft+=k; renderPin(); }
-}
-async function tryLogin(){
-  if(!pinTarget) return;
-  const err=document.getElementById("pinErr");
-  err.textContent="Kontrol ediliyor...";
+async function rootLogin(){
+  const code=document.getElementById("rootCode").value.trim().toUpperCase();
+  const pin=document.getElementById("rootPin").value.trim();
+  const err=document.getElementById("rootErr"); err.textContent="";
   try{
-    const d = await api("/login", {method:"POST", body:{userId:pinTarget.id, pin:pinDraft}});
-    authToken = d.token; session = d.user; pinDraft="";
-    saveToken(d.user.id, d.token);   // 5 dk PIN'siz tekrar girise izin
-    err.textContent="";
+    const lk=await api("/lookup",{method:"POST",body:{code}});
+    if(lk.kind!=="root") throw new Error("root degil");
+    const d=await api("/login",{method:"POST",body:{userId:lk.members[0].id, pin}});
+    authToken=d.token; session=d.user; authMode="root"; closeModal();
+    document.getElementById("loginView").classList.add("hidden");
+    await refreshState(); enterApp();
+  }catch(e){ err.textContent="Kod veya PIN hatalı"; }
+}
+
+/* ---- HESAP PANOSU (dashboard) ---- */
+async function showAccountHome(){
+  authMode="account"; session=null; currentFamilyId=null;
+  stopAutoRefresh(); resetTheme();
+  document.getElementById("loginView").classList.add("hidden");
+  document.getElementById("appView").classList.add("hidden");
+  document.getElementById("wizardMount").innerHTML="";
+  document.getElementById("accountView").classList.remove("hidden");
+  try{ await loadAccount(); }catch(e){ toast("Yüklenemedi"); }
+  document.getElementById("accWho").textContent = account ? (account.name||account.email) : "";
+  renderAccountHome();
+}
+async function loadAccount(){
+  const d = await api("/account/state");
+  account = d.account; accountFamilies = d.families||[];
+}
+function renderAccountHome(){
+  const body=document.getElementById("accountBody");
+  if(!accountFamilies.length){
+    body.innerHTML = `<div class="card" style="text-align:center">
+      <div style="font-size:46px">🏡</div><h2>Hoş geldin!</h2>
+      <div class="sub">Henüz ailen yok. Bir aile oluştur; davet edildiysen davet linkine tıkla.</div>
+      <button class="btn-primary" style="width:100%" onclick="createFamilyPrompt()">➕ Aile oluştur</button></div>`;
+    return;
+  }
+  body.innerHTML = accountFamilies.map(familyCard).join("") +
+    `<button class="btn-ghost" style="width:100%" onclick="createFamilyPrompt()">➕ Yeni aile oluştur</button>`;
+}
+function familyCard(f){
+  const kids = f.children.map(c=>`
+    <div class="name-item" onclick="enterChildMode('${c.id}')" style="cursor:pointer">
+      <div class="av">${escapeHtml(c.av||'🙂')}</div>
+      <div>${escapeHtml(c.name)}<small>${c.hasPin?'🔒 PIN':'profil'}</small></div></div>`).join("");
+  const co = (f.coParents||[]).map(c=>`<span class="chip">${escapeHtml(c.email)}</span>`).join(" ");
+  const pend = (f.pendingInvites||[]).map(i=>`<span class="chip pending">${escapeHtml(i.email)} · ${i.role==='child'?'çocuk':'ebeveyn'} · bekliyor</span>`).join(" ");
+  return `<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h2 style="margin:0">${escapeHtml(f.name)}</h2><span class="chip">${f.role==='owner'?'sahip':'ebeveyn'}</span></div>
+    <div class="sub" style="margin:10px 0 6px">Çocuk profili seç (→ çocuk modu):</div>
+    <div class="name-list">${kids || '<div class="empty" style="padding:14px"><span class="e">🧒</span>Henüz çocuk yok</div>'}</div>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <button class="btn-primary" style="flex:1 1 45%" onclick="enterParentMode('${f.id}')">👨‍👩‍👧 Ebeveyn paneli</button>
+      <button class="btn-ghost" style="flex:1 1 45%" onclick="addChildPrompt('${f.id}')">➕ Çocuk ekle</button></div>
+    <button class="btn-ghost" style="width:100%;margin-top:8px" onclick="invitePrompt('${f.id}')">✉️ Aileye davet et</button>
+    ${(co||pend) ? `<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:5px">${co} ${pend}</div>`:''}</div>`;
+}
+function createFamilyPrompt(){
+  showModal(`<h3>Aile oluştur</h3>
+    <input id="famName" placeholder="Aile adı (örn. Bizim Ev)" style="width:100%;box-sizing:border-box;padding:12px;border:2px solid var(--line);border-radius:10px;margin:10px 0">
+    <div class="pin-err" id="famErr"></div>
+    <button class="btn-primary" style="width:100%" onclick="createFamily()">Oluştur</button>`);
+  setTimeout(()=>{const i=document.getElementById("famName");if(i)i.focus();},120);
+}
+async function createFamily(){
+  const name=document.getElementById("famName").value.trim();
+  if(!name){ document.getElementById("famErr").textContent="Aile adı gir"; return; }
+  try{ await api("/account/create-family",{method:"POST",body:{name}}); closeModal(); await loadAccount(); renderAccountHome(); toast("Aile oluşturuldu 🏡"); }
+  catch(e){ document.getElementById("famErr").textContent=e.message; }
+}
+let _chAv="🦊";
+function addChildPrompt(familyId){
+  _chAv="🦊"; const avs=["🦊","🦁","🐯","🐻","🐼","🐸","🦄","🐲","🐰","🐨","🦖","🐱"];
+  showModal(`<h3>Çocuk ekle</h3>
+    <input id="chName" placeholder="Adı" style="width:100%;box-sizing:border-box;padding:12px;border:2px solid var(--line);border-radius:10px;margin:8px 0">
+    <input id="chAge" inputmode="numeric" placeholder="Yaş (opsiyonel)" style="width:100%;box-sizing:border-box;padding:12px;border:2px solid var(--line);border-radius:10px;margin-bottom:8px">
+    <div class="sub">Avatar:</div>
+    <div id="chAvs" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0">${avs.map((a,i)=>`<button class="emoji-opt" onclick="pickChAv(this,'${a}')" style="font-size:22px;padding:6px 9px;border:2px solid ${i===0?'var(--primary)':'var(--line)'};border-radius:10px;background:#fff;cursor:pointer">${a}</button>`).join("")}</div>
+    <input id="chPin" inputmode="numeric" maxlength="8" placeholder="PIN (opsiyonel; boş = PIN yok)" style="width:100%;box-sizing:border-box;padding:12px;border:2px solid var(--line);border-radius:10px;margin-bottom:8px">
+    <div class="pin-err" id="chErr"></div>
+    <button class="btn-primary" style="width:100%" onclick="addChild('${familyId}')">Ekle</button>`);
+}
+function pickChAv(btn,a){ _chAv=a; document.querySelectorAll("#chAvs .emoji-opt").forEach(b=>b.style.borderColor="var(--line)"); btn.style.borderColor="var(--primary)"; }
+async function addChild(familyId){
+  const name=document.getElementById("chName").value.trim();
+  if(!name){ document.getElementById("chErr").textContent="Ad gir"; return; }
+  try{ await api("/account/add-child",{method:"POST",body:{familyId,name,age:document.getElementById("chAge").value.trim(),av:_chAv,pin:document.getElementById("chPin").value.trim()}});
+    closeModal(); await loadAccount(); renderAccountHome(); toast("Çocuk eklendi 🎉"); }
+  catch(e){ document.getElementById("chErr").textContent=e.message; }
+}
+let invRole="parent";
+function invitePrompt(familyId){
+  invRole="parent";
+  showModal(`<h3>Aileye davet</h3>
+    <div class="sub">${appConfig.emailCode?'Davet e-postayla gönderilir.':'E-posta servisi kapalı; davet linkini sen paylaşırsın.'}</div>
+    <input id="invEmail" type="email" placeholder="E-posta" style="width:100%;box-sizing:border-box;padding:12px;border:2px solid var(--line);border-radius:10px;margin:8px 0">
+    <div class="seg" style="margin-bottom:8px"><button id="invP" class="active" onclick="invRole='parent';this.classList.add('active');document.getElementById('invC').classList.remove('active')">Ebeveyn</button><button id="invC" onclick="invRole='child';this.classList.add('active');document.getElementById('invP').classList.remove('active')">Çocuk</button></div>
+    <div class="pin-err" id="invErr"></div>
+    <button class="btn-primary" style="width:100%" onclick="sendInvite('${familyId}')">Davet et</button>`);
+}
+async function sendInvite(familyId){
+  const email=document.getElementById("invEmail").value.trim().toLowerCase();
+  if(!email){ document.getElementById("invErr").textContent="E-posta gir"; return; }
+  try{
+    const d=await api("/account/invite",{method:"POST",body:{familyId,email,role:invRole}});
+    await loadAccount(); renderAccountHome();
+    const link = location.origin+"/?invite="+d.inviteToken;
+    showModal(`<div style="text-align:center"><div style="font-size:38px">✉️</div><h3>Davet hazır</h3>
+      <div class="sub">${escapeHtml(email)} · ${invRole==='child'?'çocuk':'ebeveyn'}</div>
+      <div class="sub" style="margin-top:8px">Davet linki:</div>
+      <div class="proof-box" style="word-break:break-all;font-size:12px">${escapeHtml(link)}</div>
+      <button class="btn-ghost" style="width:100%;margin-top:8px" onclick="(navigator.clipboard&&navigator.clipboard.writeText('${link}').then(()=>toast('Kopyalandı 📋')))||toast('${link}')">📋 Kopyala</button>
+      <button class="btn-primary" style="width:100%;margin-top:8px" onclick="closeModal()">Tamam</button></div>`);
+  }catch(e){ document.getElementById("invErr").textContent=e.message; }
+}
+
+/* ---- COCUK MODU (Netflix profili) ---- */
+function enterChildMode(childId){
+  let child=null; accountFamilies.forEach(f=>{ const c=f.children.find(x=>x.id===childId); if(c) child=c; });
+  if(child && child.hasPin){ childPinPrompt(childId, child.name); return; }
+  doEnterChild(childId, "");
+}
+function childPinPrompt(childId, name){
+  showModal(`<div style="text-align:center"><h3>${escapeHtml(name)}</h3><div class="sub">PIN gir</div>
+    <input id="cpin" inputmode="numeric" maxlength="8" type="password" style="width:100%;box-sizing:border-box;padding:13px;font-size:20px;text-align:center;letter-spacing:6px;border:2px solid var(--line);border-radius:12px;margin:10px 0">
+    <div class="pin-err" id="cpinErr"></div>
+    <button class="btn-primary" style="width:100%" onclick="doEnterChild('${childId}', document.getElementById('cpin').value)">Gir</button></div>`);
+  setTimeout(()=>{const i=document.getElementById("cpin");if(i)i.focus();},150);
+}
+async function doEnterChild(childId, pin){
+  try{
+    const d = await api("/account/child-token",{method:"POST",body:{childId, pin}});
+    closeModal();
+    authToken = d.token; authMode="child";
+    document.getElementById("accountView").classList.add("hidden");
     await refreshState();
     enterApp();
-  }catch(e){
-    document.getElementById("pinErr").textContent="Yanlış PIN, tekrar dene"; pinDraft=""; renderPin();
-  }
+  }catch(e){ const el=document.getElementById("cpinErr"); if(el) el.textContent="PIN hatalı"; else toast(e.message||"Girilemedi"); }
+}
+
+/* ---- EBEVEYN MODU (aile panosu) ---- */
+async function enterParentMode(familyId){
+  authMode="parent"; currentFamilyId=familyId; authToken=localStorage.getItem(ACC_TOKEN_KEY);
+  document.getElementById("accountView").classList.add("hidden");
+  try{ await refreshState(); enterApp(); }
+  catch(e){ toast("Yüklenemedi: "+(e.message||"")); authMode="account"; showAccountHome(); }
+}
+
+/* ---- mod cikislari ---- */
+function backToAccount(){
+  authToken = localStorage.getItem(ACC_TOKEN_KEY);   // hesap oturumuna don
+  showAccountHome();
+}
+function appExit(){ if(authMode==="root") logoutAccount(); else backToAccount(); }
+function logoutAccount(){
+  stopAutoRefresh();
+  localStorage.removeItem(ACC_TOKEN_KEY);
+  authToken=null; account=null; accountFamilies=[]; session=null; authMode="account"; currentFamilyId=null;
+  document.getElementById("appView").classList.add("hidden");
+  document.getElementById("accountView").classList.add("hidden");
+  document.getElementById("wizardMount").innerHTML="";
+  document.getElementById("loginView").classList.remove("hidden");
+  resetTheme(); setAuthTab("login");
 }
 
 /* ======================= APP SHELL ======================= */
@@ -840,13 +996,13 @@ function enterApp(){
   document.getElementById("appView").classList.remove("hidden");
   document.getElementById("brandTop").textContent = APP_NAME;
   document.getElementById("whoLabel").innerHTML = `${escapeHtml(session.av)} <b>${escapeHtml(session.name)}</b>`;
+  document.getElementById("backToAccBtn").classList.toggle("hidden", authMode==="root");   // root'ta panoya don yok
   if(session.role==="child") applyTheme(themeOf(session)); else resetTheme();
   renderApp();
   startAutoRefresh();
-  if(!session.isRoot && session.role!=="root") setTimeout(showAnnouncements, 500);   // root: duyuru yok
-  if(session.role==="child"){ setTimeout(checkCheckpointCelebration, 1100); setTimeout(showApprovalReminder, 1700); setTimeout(showWeeklyReminder, 2300); }
+  if(session.role==="child"){ setTimeout(showAnnouncements, 500); setTimeout(checkCheckpointCelebration, 1100); setTimeout(showApprovalReminder, 1700); setTimeout(showWeeklyReminder, 2300); }
 }
-function logout(){ stopAutoRefresh(); if(session) clearSavedToken(session.id); resetTheme(); session=null; authToken=null; pinTarget=null; pinDraft=""; document.getElementById("wizardMount").innerHTML=""; document.getElementById("appBody").innerHTML=""; document.getElementById("appView").classList.add("hidden"); document.getElementById("loginView").classList.remove("hidden"); renderLogin(); }
+function logout(){ logoutAccount(); }   // eski cagrilar icin alias
 
 /* ---- oto-yenileme: 90 sn'de bir, modal/sihirbaz aciksa dokunma ---- */
 let refreshTimer = null;
@@ -933,6 +1089,7 @@ function renderApp(){
   else if(session.role==="child") renderChild();
   else renderApprover();
   updateNotifBadge();
+  hydrateProofs();   // kanit fotolari header-auth ile (token URL'de degil)
 }
 function updateNotifBadge(){
   const b=document.getElementById("notifBadge"); if(!b||!session) return;
@@ -1499,15 +1656,15 @@ async function submitCheckpoint(){
   if(reward.length<2){ toast("Ödül adı yaz"); return; }
   if(threshold<1){ toast("Yıldız eşiği gir"); return; }
   const btn=document.querySelector(".modal .btn-primary"); if(btn){btn.disabled=true;btn.textContent="Ekleniyor...";}
-  try{ await api("/checkpoint",{method:"POST",body:{childId,threshold,reward}}); closeModal(); await refreshState(); toast("Ara ödül eklendi ✓"); renderApp(); }
+  try{ await pwrite("/checkpoint",{childId,threshold,reward}); closeModal(); await refreshState(); toast("Ara ödül eklendi ✓"); renderApp(); }
   catch(e){ if(btn){btn.disabled=false;btn.textContent="Ekle";} toast("Hata: "+e.message); }
 }
 async function checkpointGiven(id){
-  try{ await api("/checkpoint-given",{method:"POST",body:{id}}); await refreshState(); toast("Verildi ✓"); renderApp(); }catch(e){ toast("Hata: "+e.message); }
+  try{ await pwrite("/checkpoint-given",{id}); await refreshState(); toast("Verildi ✓"); renderApp(); }catch(e){ toast("Hata: "+e.message); }
 }
 async function checkpointCancel(id){
   if(!confirm("Bu ara ödül iptal edilsin mi?")) return;
-  try{ await api("/checkpoint-cancel",{method:"POST",body:{id}}); await refreshState(); toast("İptal edildi"); renderApp(); }catch(e){ toast("Hata: "+e.message); }
+  try{ await pwrite("/checkpoint-cancel",{id}); await refreshState(); toast("İptal edildi"); renderApp(); }catch(e){ toast("Hata: "+e.message); }
 }
 /* ogrenme sohbeti loglari (ebeveyn/admin kontrolu) */
 function chatLogsCard(){
@@ -1589,20 +1746,20 @@ async function submitCustomTask(){
   if(title.length<2){ toast("Görev adı yaz"); return; }
   const btn=document.querySelector(".modal .btn-primary"); if(btn){btn.disabled=true;btn.textContent="Ekleniyor...";}
   try{
-    await api("/custom-task", {method:"POST", body:{childId, title, emoji:ctEmoji, xp}});
+    await pwrite("/custom-task", {childId, title, emoji:ctEmoji, xp});
     closeModal(); await refreshState(); toast("Görev verildi ✓"); renderApprover();
   }catch(e){ if(btn){btn.disabled=false;btn.textContent="Görevi Ver";} toast("Hata: "+e.message); }
 }
 async function cancelCustomTask(id){
   if(!confirm("Bu özel görev iptal edilsin mi?")) return;
-  try{ await api("/custom-cancel",{method:"POST",body:{id}}); await refreshState(); toast("İptal edildi"); renderApprover(); }
+  try{ await pwrite("/custom-cancel",{id}); await refreshState(); toast("İptal edildi"); renderApprover(); }
   catch(e){ toast("Hata: "+e.message); }
 }
 function approveCard(c){
   const child=user(c.userId); const task=taskById(c.taskId) || {emoji:"⭐",title:"Görev",xp:0};
   let proofHTML="";
   if(c.proof.text) proofHTML+=`<div class="proof-box">"${escapeHtml(c.proof.text)}"</div>`;
-  if(c.proof.photoKey) proofHTML+=`<div class="proof-box">📷 Fotoğraf:<img src="/api/proof/${c.proof.photoKey}?t=${encodeURIComponent(authToken)}" loading="lazy"></div>`;
+  if(c.proof.photoKey) proofHTML+=`<div class="proof-box">📷 Fotoğraf:<img class="proofimg" data-key="${escapeHtml(c.proof.photoKey)}" loading="lazy" alt="kanıt"></div>`;
   if(!c.proof.text && !c.proof.photoKey) proofHTML=`<div class="proof-box" style="color:var(--muted)">Kanıt yok, çocuk yaptığını bildirdi.</div>`;
   let aiHTML="";
   if(c.aiNote) aiHTML=`<div class="ai-note">🤖 Akıllı yardımcı: ${escapeHtml(c.aiNote.note)} ${c.aiNote.ok?'✓':'⚠️'}</div>`;
@@ -1632,7 +1789,7 @@ function kidStatusRow(kid){
 }
 async function decide(compId, status){
   try{
-    await api("/decide", {method:"POST", body:{compId, decision:status}});
+    await pwrite("/decide", {compId, decision:status});
     toast(status==="approved"?"Onaylandı ✓ Yıldız eklendi":"Reddedildi");
     await refreshState();
     renderApprover();
@@ -1811,6 +1968,7 @@ function urlB64ToUint8(s){
 }
 /* ebeveyn/admin: bildirim butonu durumu */
 function notifBtnHTML(){
+  if(authMode==="parent") return "";   // hesap-modu push'u henuz yok (account token user uci kabul etmez)
   if(!pushSupported()) return "";   // tarayici desteklemiyor ( or. iOS Safari sekmesi)
   const on = Notification.permission==="granted";
   return `<button class="btn-ghost" id="pushBtn" style="width:100%;margin-top:10px" onclick="enablePush()">
@@ -1837,9 +1995,19 @@ async function enablePush(){
 async function boot(){
   registerSW();
   document.getElementById("brandTitle").textContent = APP_NAME;
-  const code = localStorage.getItem(FAMILY_CODE_KEY);
-  if(code){ await submitCode(code); }   // cihaz aileyi hatirliyor: dogrudan uye secimine
-  else { showCodeEntry(); }              // yeni cihaz: aile kodu iste
+  await loadConfig();
+  pendingInvite = new URLSearchParams(location.search).get("invite");   // ?invite=... davet linki
+  const t = localStorage.getItem(ACC_TOKEN_KEY);
+  if(t){
+    authToken = t;
+    try{
+      await loadAccount();                       // token gecerli: hesap yuklendi
+      if(pendingInvite){ await tryAcceptInvite(pendingInvite); pendingInvite=null; }
+      showAccountHome(); return;
+    }catch(e){ localStorage.removeItem(ACC_TOKEN_KEY); authToken=null; }   // token bozuk: girise dus
+  }
+  setAuthTab("login");
+  if(pendingInvite){ const el=document.getElementById("authErr"); if(el) el.textContent="Daveti kabul etmek için önce giriş yap veya kayıt ol."; }
 }
 boot();
 </script>

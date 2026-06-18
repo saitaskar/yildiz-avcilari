@@ -12,14 +12,63 @@ DROP TABLE IF EXISTS push_subs;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS seasons;
 DROP TABLE IF EXISTS families;
+DROP TABLE IF EXISTS accounts;
+DROP TABLE IF EXISTS account_families;
+DROP TABLE IF EXISTS family_invites;
+DROP TABLE IF EXISTS email_codes;
+
+-- ===================== ACCOUNTS (yetiskin kimligi: Google / email+parola / email-kod) =====================
+CREATE TABLE accounts (
+  id             TEXT PRIMARY KEY,
+  email          TEXT UNIQUE,
+  email_verified INTEGER DEFAULT 0,
+  pw_hash        TEXT,                  -- PBKDF2-SHA256
+  pw_salt        TEXT,
+  pw_iter        INTEGER,
+  google_sub     TEXT UNIQUE,
+  name           TEXT,
+  created_ts     INTEGER NOT NULL,
+  last_login     INTEGER
+);
+-- account <-> family (cok-aile/cok-ebeveyn): role owner|parent
+CREATE TABLE account_families (
+  account_id TEXT NOT NULL,
+  family_id  TEXT NOT NULL,
+  role       TEXT NOT NULL DEFAULT 'parent',
+  added_ts   INTEGER NOT NULL,
+  PRIMARY KEY (account_id, family_id)
+);
+CREATE INDEX idx_af_account ON account_families(account_id);
+CREATE INDEX idx_af_family  ON account_families(family_id);
+-- e-posta davetleri (cocuk/ebeveyn olarak; davet e-postasina BAGLI kabul)
+CREATE TABLE family_invites (
+  id         TEXT PRIMARY KEY,
+  family_id  TEXT NOT NULL,
+  email      TEXT NOT NULL,
+  role       TEXT NOT NULL,             -- parent | child
+  invited_by TEXT,
+  token      TEXT NOT NULL UNIQUE,
+  status     TEXT NOT NULL DEFAULT 'pending',
+  ts         INTEGER NOT NULL
+);
+CREATE INDEX idx_inv_family ON family_invites(family_id);
+CREATE INDEX idx_inv_email  ON family_invites(email);
+-- e-postaya-kod (passwordless) gecici kodlari
+CREATE TABLE email_codes (
+  email     TEXT PRIMARY KEY,
+  code_hash TEXT NOT NULL,              -- salt:hash (PBKDF2)
+  exp       INTEGER NOT NULL,
+  tries     INTEGER DEFAULT 0
+);
 
 -- ===================== FAMILIES (tenant) =====================
 CREATE TABLE families (
-  id         TEXT PRIMARY KEY,
-  name       TEXT NOT NULL,
-  code       TEXT NOT NULL UNIQUE,   -- aile giris kodu (cihaz hatirlar; cocuk/ebeveyn PIN ekrani buna gore acilir)
-  owner_id   TEXT,                   -- sahip ebeveyn (Faz B: email + parola)
-  created_ts INTEGER NOT NULL
+  id               TEXT PRIMARY KEY,
+  name             TEXT NOT NULL,
+  code             TEXT NOT NULL UNIQUE,   -- legacy aile-kodu (account modelde kullanilmaz ama UNIQUE dolu kalir)
+  owner_id         TEXT,                   -- legacy approver (eski)
+  owner_account_id TEXT,                   -- aileyi kuran hesap (account model)
+  created_ts       INTEGER NOT NULL
 );
 
 CREATE TABLE seasons (
