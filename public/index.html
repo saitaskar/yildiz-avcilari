@@ -11,6 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Yıldız">
 <link rel="icon" type="image/png" href="/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --primary:#6C2BD9;      /* mor */
@@ -64,10 +67,22 @@
   .card .sub{color:var(--muted);font-size:13px;margin-bottom:14px;}
 
   /* ---------- Login ---------- */
-  .login-hero{text-align:center;padding:30px 16px 10px;}
-  .login-hero .logo{font-size:54px;}
-  .login-hero h1{margin:8px 0 2px;font-size:26px;color:var(--primary-dark);}
-  .login-hero p{color:var(--muted);margin:0;font-size:14px;}
+  /* ----- sevimli yildiz/uzay temali giris ekrani ----- */
+  #loginView{position:relative;min-height:100vh;background:linear-gradient(180deg,#0E0A2A 0%,#1A1147 55%,#2A1A5E 100%);overflow:hidden;}
+  #loginView::before{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;
+    background-image:radial-gradient(1.5px 1.5px at 24px 30px,#fff,transparent),radial-gradient(1.5px 1.5px at 130px 80px,rgba(255,255,255,.55),transparent),radial-gradient(2px 2px at 220px 50px,#fff,transparent),radial-gradient(1.5px 1.5px at 300px 140px,rgba(255,255,255,.6),transparent),radial-gradient(1.5px 1.5px at 80px 180px,rgba(255,255,255,.45),transparent);
+    background-repeat:repeat;background-size:340px 220px;opacity:.5;animation:twk 6s ease-in-out infinite;}
+  #loginView::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;
+    background:radial-gradient(520px 360px at 50% -8%,rgba(108,43,217,.55),transparent),radial-gradient(440px 320px at 88% 16%,rgba(255,111,181,.22),transparent),radial-gradient(440px 320px at 6% 70%,rgba(94,231,255,.16),transparent);}
+  #loginView .wrap{position:relative;z-index:1;}
+  @keyframes twk{0%,100%{opacity:.35}50%{opacity:.62}}
+  .login-hero{position:relative;z-index:1;text-align:center;padding:48px 16px 6px;}
+  .login-hero .logo{font-size:64px;filter:drop-shadow(0 0 18px rgba(255,209,102,.85));animation:bob 3s ease-in-out infinite;display:inline-block;}
+  .login-hero h1{margin:10px 0 4px;font-family:'Fredoka',sans-serif;font-weight:700;font-size:34px;color:#fff;letter-spacing:.01em;text-shadow:0 2px 22px rgba(108,43,217,.55);}
+  .login-hero p{color:rgba(255,255,255,.8);margin:0;font-size:15px;font-weight:600;}
+  #authCard{position:relative;z-index:1;border-radius:22px;box-shadow:0 26px 64px -22px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.06);}
+  #authCard .seg button{font-family:'Fredoka',sans-serif;}
+  #authCard #authSubmit{font-family:'Fredoka',sans-serif;font-size:17px;letter-spacing:.01em;}
   .role-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:18px 0;}
   .role-btn{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:16px 8px;text-align:center;font-weight:700;font-size:13px;color:var(--text);transition:.15s;}
   .role-btn .ico{font-size:30px;display:block;margin-bottom:6px;}
@@ -262,7 +277,7 @@
   <div class="login-hero">
     <div class="logo">🌟</div>
     <h1 id="brandTitle">Yıldız Avcıları</h1>
-    <p>Yıldızları topla, ödülü aç!</p>
+    <p>Görev yap, yıldızları topla, ödülü aç ✨</p>
   </div>
   <div class="wrap" style="padding-top:0;">
     <div class="card" id="authCard">
@@ -865,9 +880,16 @@ function renderAccountHome(){
   const body=document.getElementById("accountBody");
   if(!accountFamilies.length){
     body.innerHTML = `<div class="card" style="text-align:center">
-      <div style="font-size:46px">🏡</div><h2>Hoş geldin!</h2>
-      <div class="sub">Henüz ailen yok. Bir aile oluştur; davet edildiysen davet linkine tıkla.</div>
-      <button class="btn-primary" style="width:100%" onclick="createFamilyPrompt()">➕ Aile oluştur</button></div>`;
+      <div style="font-size:54px;animation:bob 3s ease-in-out infinite;display:inline-block">🌟</div>
+      <h2 style="margin:6px 0">Hoş geldin!</h2>
+      <div class="sub">Yıldız Avcıları'na ailenle başlayalım. Üç adımda hazırsın:</div>
+      <div style="text-align:left;max-width:300px;margin:2px auto 16px;font-size:14px">
+        <div style="padding:7px 0">1️⃣ <b>Aileni kur</b> (bir ad ver)</div>
+        <div style="padding:7px 0">2️⃣ <b>Çocuk profili ekle</b> (ad + avatar, istersen PIN)</div>
+        <div style="padding:7px 0">3️⃣ <b>Çocuk görev yapar, sen onaylarsın</b> ⭐</div>
+      </div>
+      <button class="btn-primary" style="width:100%" onclick="createFamilyPrompt()">✨ Aileni oluştur</button>
+      <div class="sub" style="margin-top:12px;font-size:12px">Davet edildiysen, sana gelen davet linkine tıklaman yeterli.</div></div>`;
     return;
   }
   body.innerHTML = accountFamilies.map(familyCard).join("") +
@@ -901,8 +923,12 @@ function createFamilyPrompt(){
 async function createFamily(){
   const name=document.getElementById("famName").value.trim();
   if(!name){ document.getElementById("famErr").textContent="Aile adı gir"; return; }
-  try{ await api("/account/create-family",{method:"POST",body:{name}}); closeModal(); await loadAccount(); renderAccountHome(); toast("Aile oluşturuldu 🏡"); }
-  catch(e){ document.getElementById("famErr").textContent=e.message; }
+  const wasFirst = accountFamilies.length===0;   // ilk aile mi: kurulumda cocuk eklemeye yonlendir
+  try{
+    const r = await api("/account/create-family",{method:"POST",body:{name}});
+    closeModal(); await loadAccount(); renderAccountHome(); toast("Aile oluşturuldu 🏡");
+    if(wasFirst && r && r.family) setTimeout(()=>addChildPrompt(r.family.id), 450);
+  }catch(e){ document.getElementById("famErr").textContent=e.message; }
 }
 let _chAv="🦊";
 function addChildPrompt(familyId){
