@@ -483,6 +483,8 @@ export async function onRequest(context){
       const nm = name || email.split("@")[0];
       await env.DB.prepare("INSERT INTO accounts (id,email,email_verified,pw_hash,pw_salt,pw_iter,name,created_ts,last_login) VALUES (?,?,0,?,?,?,?,?,?)")
         .bind(id, email, ph.hash, ph.salt, ph.iter, nm, Date.now(), Date.now()).run();
+      context.waitUntil(sendEmail(env, email, "Yıldız Avcıları'na hoş geldin! 🌟",
+        "<p>Merhaba "+nm+",</p><p>Yıldız Avcıları hesabın hazır. Ailenle başlamak için <a href=\"https://yildizavcilari.cryme.tr\">giriş yap</a>, bir aile kur ve çocuk profillerini ekle.</p><p>İyi maceralar! 🌟</p>"));
       return json({ token: await accountToken(env, id), account:{id, email, name:nm} });
     }
     /* --- giris (email + parola) --- */
@@ -706,7 +708,10 @@ export async function onRequest(context){
         const tok = genCode(20);
         await env.DB.prepare("INSERT INTO family_invites (id,family_id,email,role,invited_by,token,status,ts) VALUES (?,?,?,?,?,?, 'pending', ?)")
           .bind("inv_"+Date.now()+"_"+Math.floor(Math.random()*1e6), body.familyId, em, r, acc.id, tok, Date.now()).run();
-        return json({ ok:true, inviteToken:tok, role:r });   // TODO: e-posta servisi ile linki gonder
+        const inviteLink = "https://yildizavcilari.cryme.tr/?invite="+tok;
+        context.waitUntil(sendEmail(env, em, "Yıldız Avcıları aile daveti ✉️",
+          "<p>Bir aileye "+(r==="child"?"çocuk":"ebeveyn")+" olarak davet edildin.</p><p>Kabul etmek için bu e-posta ile giriş yap / kayıt ol ve linke tıkla:</p><p><a href=\""+inviteLink+"\">Daveti kabul et</a></p>"));
+        return json({ ok:true, inviteToken:tok, role:r });   // e-posta varsa gonderilir; yoksa link UI'da paylasilir
       }
       // daveti kabul et (giris yapmis hesap aileye baglanir). Su an parent daveti; e-postali cocuk ileride.
       if(route==="account/accept-invite" && method==="POST"){
@@ -891,7 +896,7 @@ export async function onRequest(context){
     if(route==="theme" && method==="POST"){
       if(me.role!=="child") return bad("Yetkisiz", 403);
       const { theme } = body;
-      if(!["scifi","fantasy","pixel"].includes(theme)) return bad("Geçersiz tema");
+      if(!["scifi","fantasy","pixel","ocean","hero"].includes(theme)) return bad("Geçersiz tema");
       await env.DB.prepare("UPDATE users SET theme=? WHERE id=?").bind(theme, me.id).run();
       return json({ ok:true });
     }

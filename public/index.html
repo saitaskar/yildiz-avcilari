@@ -486,6 +486,70 @@ const THEMES = {
       sofra:{title:"Crafting Masası", sub:"Yemek masasını kur ve topla"},
       kitap:{title:"Büyü Masası", sub:"Büyü masası seviyeni artır (kitap oku)"},
     }
+  },
+  ocean:{
+    id:"ocean", name:"Derin Deniz Kâşifi", cls:"Kâşif", ico:"🌊",
+    colors:{"primary":"#22D3EE","primary-dark":"#0E7490","accent":"#FFC857","bg":"#06141F","card":"#0E2433","text":"#E2F6FF","muted":"#74A0B8","line":"#1B3A4B"},
+    cardGrad:"linear-gradient(150deg,#072A3D,#0A4A63)",
+    bot:{name:"Mercan", ico:"🐬"},
+    intro:"Okyanusun en derininde kayıp bir hazine sandığı parlıyor. Ona ulaşmak için her gün dalış yapan cesur bir kâşif ol.",
+    story:"Derin denizlerin kâşifisin. Karatahtadaki siluet, dipte parlayan kayıp hazine. Sandığa ulaşmak için her gün oksijenini ve cesaretini topla.",
+    prize:"Kayıp Hazine", revealLabel:"SANDIK AÇILDI! Hazine senin 🪸",
+    approval:"Deniz Üssü onayı bekleniyor",
+    miles:{0:"Sular bulanık...",25:"Dipte bir parıltı 🫧",50:"Sandık görüş alanında!",75:"Sandığın kilidi açılıyor...",100:"SANDIK AÇILDI 🪸"},
+    tut:[
+      "Merhaba kâşif! Ben Mercan, dalış yoldaşın yunus. Büyük Karne Sezonu başladı ve dipteki kayıp hazineyi bulma görevi sana düştü.",
+      "Her gün küçük dalışlar (görevler) yaparsın: oksijen doldur, mercanları temizle. Kanıtını yollarsın, Deniz Üssü (ailen) onaylar ve hazineye yaklaşırsın.",
+      "Dalışların saatleri var, zamanı gelince açılır. Haftada bir derin keşif günlüğü yazarsın. Cesaret doldukça sandık belirir. Dalışa hazır mısın?"
+    ],
+    tasks:{
+      ogren:{title:"Keşif Günlüğü", sub:"Bugün öğrendiğini deniz günlüğüne yaz"},
+      ekransiz:{title:"Sessiz Dalış", sub:"1 saat ekransız: kitap, maket, oyun"},
+      fiziksel:{title:"Yüzme Antrenmanı", sub:"Bedenini dalışa hazırla, hareket et"},
+      yatak:{title:"Denizaltı Düzeni", sub:"Kabinini topla, dalışa hazır et"},
+      dis_sabah:{title:"Mercan Parlatma · sabah", sub:"Dişlerini mercan gibi parlat"},
+      dis_aksam:{title:"Mercan Parlatma · gece", sub:"Dişlerini mercan gibi parlat"},
+      el:{title:"Tuz Arınması", sub:"Ellerini temizle (yıka)"},
+      su:{title:"Oksijen Tankı", sub:"Tankını doldur (su iç)"},
+      banyo:{title:"Derin Yıkanma", sub:"Tüm vücudu temizle (banyo)"},
+      kahvalti:{title:"Sabah Erzakı", sub:"Dalış enerjini topla"},
+      ogle:{title:"Öğlen Erzakı", sub:"Dalış enerjini topla"},
+      aksam:{title:"Akşam Erzakı", sub:"Dalış enerjini topla"},
+      sofra:{title:"Güverte Görevi", sub:"Sofrayı kur ve topla"},
+      kitap:{title:"Sualtı Atlası", sub:"20 dk kitap oku, denizleri keşfet"},
+    }
+  },
+  hero:{
+    id:"hero", name:"Şehrin Kahramanı", cls:"Kahraman", ico:"🦸",
+    colors:{"primary":"#F43F5E","primary-dark":"#9F1239","accent":"#38BDF8","bg":"#0B0F1E","card":"#15203A","text":"#EAF0FF","muted":"#8194B8","line":"#243352"},
+    cardGrad:"linear-gradient(150deg,#1E2A52,#7A1530)",
+    bot:{name:"Vızıltı", ico:"🤖"},
+    intro:"Şehri koruyacak gizli süper güç bir kasada kilitli. Onu açmak için her gün gücünü ve iyiliğini büyüten bir kahraman ol.",
+    story:"Şehrin yeni kahramanısın. Karatahtadaki siluet, sana ait gizli süper güç. Onu açığa çıkarmak için her gün iyilik yap, gücünü topla.",
+    prize:"Süper Güç", revealLabel:"GÜÇ AÇIĞA ÇIKTI! Artık kahramansın 🦸",
+    approval:"Kahraman Merkezi onayı bekleniyor",
+    miles:{0:"Güç uykuda...",25:"İçinde bir kıvılcım ⚡",50:"Gücün uyanıyor!",75:"Pelerin dalgalanıyor...",100:"GÜÇ AÇIĞA ÇIKTI 🦸"},
+    tut:[
+      "Selam kahraman adayı! Ben Vızıltı, senin robot yardımcın. Büyük Karne Sezonu başladı ve gizli süper gücünü açma görevi sende!",
+      "Her gün kahramanlık görevleri yaparsın: enerjini şarj et, antren yap. Kanıtını yollarsın, Kahraman Merkezi (ailen) onaylar ve gücün büyür.",
+      "Görevlerin belli saatlerde açılır. Haftada bir yeni bir şey öğrenip raporlarsın. Güç doldukça pelerin belirir. Göreve hazır mısın kahraman?"
+    ],
+    tasks:{
+      ogren:{title:"Kahraman Raporu", sub:"Bugün öğrendiğin yeni şeyi anlat"},
+      ekransiz:{title:"Gizli Görev", sub:"1 saat ekransız kahramanlık: oyun, kitap"},
+      fiziksel:{title:"Güç Antrenmanı", sub:"Kaslarını çalıştır, gücünü büyüt"},
+      yatak:{title:"Üs Düzeni", sub:"Gizli üssünü (odanı) topla"},
+      dis_sabah:{title:"Zırh Parlatma · sabah", sub:"Dişlerini zırh gibi parlat"},
+      dis_aksam:{title:"Zırh Parlatma · gece", sub:"Dişlerini zırh gibi parlat"},
+      el:{title:"Mikrop Avı", sub:"Ellerindeki mikropları yen (yıka)"},
+      su:{title:"Enerji Hücresi", sub:"Enerjini şarj et (su iç)"},
+      banyo:{title:"Yenilenme Odası", sub:"Tam temizlik (banyo)"},
+      kahvalti:{title:"Güç Kahvaltısı", sub:"Süper enerji topla"},
+      ogle:{title:"Güç Öğünü · öğlen", sub:"Süper enerji topla"},
+      aksam:{title:"Güç Öğünü · akşam", sub:"Süper enerji topla"},
+      sofra:{title:"Üs Görevi", sub:"Sofrayı kur ve topla"},
+      kitap:{title:"Bilgi Gücü", sub:"20 dk oku, bilgi gücünü artır"},
+    }
   }
 };
 const DEFAULT_COLORS={"primary":"#6C2BD9","primary-dark":"#4A148C","accent":"#FF7A18","bg":"#F4F1FB","card":"#FFFFFF","text":"#1F1235","muted":"#7A6F94","line":"#E7E0F5"};
@@ -701,6 +765,8 @@ const RANKS = {
   scifi:["Çaylak","Pilot","Kaptan","Komutan","Amiral","Yıldız Amirali"],
   fantasy:["Çırak","Silahtar","Şövalye","Kumandan","Lord","Efsane"],
   pixel:["Yeni Oyuncu","Madenci","İnşaatçı","Mimar","Usta","Efsane"],
+  ocean:["Yüzücü","Dalgıç","Kâşif","Derin Dalgıç","Deniz Kaptanı","Okyanus Efsanesi"],
+  hero:["Çaylak","Çırak Kahraman","Koruyucu","Kahraman","Süper Kahraman","Efsane"],
   default:["Başlangıç","Acemi","Gözde","Uzman","Şampiyon","Efsane"]
 };
 function userRank(xp, themeId){
@@ -1548,7 +1614,9 @@ const LEARN_HELLO = {
 const LEARN_MOOD = {
   scifi:"Uzay gemisi/galaktik kaşif temasında konuş, ara sıra 'Kaptan' diye hitap et.",
   fantasy:"Fantastik diyar/şövalye temasında konuş, 'genç şövalye/kaşif' gibi hitap et.",
-  pixel:"Piksel/oyun (Minecraft tarzı) temasında konuş, 'usta' diye hitap et."
+  pixel:"Piksel/oyun (Minecraft tarzı) temasında konuş, 'usta' diye hitap et.",
+  ocean:"Derin deniz/dalış temasında konuş, 'kâşif' diye hitap et, deniz benzetmeleri kullan.",
+  hero:"Süper kahraman temasında konuş, 'kahraman' diye hitap et, cesaret ve iyilik vurgula."
 };
 let chatMessages = [];
 let chatBusy = false;
