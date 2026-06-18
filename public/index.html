@@ -627,7 +627,9 @@ async function refreshState(){
   const d = await api("/state");   // cocuk veya root token'i
   if(d.root){ state = { root:true, stats:d.stats||{}, families:d.families||[], chatLogs:d.chatLogs||[], feedback:d.feedback||[] }; if(d.me) session=d.me; return; }
   state = { season:d.season, users:d.users||[], completions:d.completions||[], customTasks:d.customTasks||[], checkpoints:d.checkpoints||[], chatLogs:d.chatLogs||[], rewards:d.rewards||[], family:d.family||null };
-  const me = (d.users||[]).find(u=>u.id===session.id); if(me) session = me;  // tema vb. guncel
+  // session null olabilir (cocuk moduna girerken); /state d.me'yi (cocugun kendisi) doner -> onu kullan
+  if(d.me) session = d.me;
+  else if(session){ const me = (d.users||[]).find(u=>u.id===session.id); if(me) session = me; }
 }
 function user(id){ return state.users.find(u=>u.id===id); }
 /* ebeveyn modunda yazma uclari -> /account/* (+ familyId); cocuk/root modda -> /api/* */
@@ -2194,6 +2196,20 @@ async function boot(){
   setAuthTab("login");
   if(pendingInvite){ const el=document.getElementById("authErr"); if(el) el.textContent="Daveti kabul etmek için önce giriş yap veya kayıt ol."; }
 }
+
+/* ---- tarayici geri tusu: site icinde gezinsin, yanlislikla siteden cikmasin ---- */
+function navBuffer(){ try{ history.pushState(null, "", location.href); }catch(e){} }
+window.addEventListener("popstate", function(){
+  const loginVisible = !document.getElementById("loginView").classList.contains("hidden");
+  const modalOpen = !!document.getElementById("modalMount").innerHTML;
+  if(loginVisible && !modalOpen){ return; }                         // giris ekrani: geri ile cikabilir
+  navBuffer();                                                       // diger her yerde cikisi engelle
+  if(modalOpen){ closeModal(); return; }                            // once acik modali kapat
+  if(document.getElementById("wizardMount").innerHTML){ return; }   // sihirbazda kal
+  if(authMode==="child" || authMode==="parent"){ backToAccount(); return; }  // app -> pano
+  // pano / root: sitede kal
+});
+navBuffer();
 boot();
 </script>
 </body>
