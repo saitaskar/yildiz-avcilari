@@ -433,6 +433,7 @@ export async function onRequest(context){
       const { userId, pin } = body;
       const u = await env.DB.prepare("SELECT * FROM users WHERE id=?").bind(userId).first();
       if(!u) return bad("PIN hatalı", 401);
+      if(!u.is_root_admin) return bad("Bu giriş yöntemi kapalı", 403);   // sadece root; cocuklar account/child-token, yetiskinler /auth/login
       const now = Date.now();
       if(u.lock_until && u.lock_until > now){
         const sec = Math.ceil((u.lock_until - now)/1000);
