@@ -422,7 +422,7 @@ export async function onRequest(context){
   try{
     // GUVENLIK: imza sirri yoksa fail-closed (sabit fallback YOK; token sahteciligini onler)
     if(!env.SESSION_SECRET) return json({error:"Sunucu yapılandırması eksik (SESSION_SECRET)"}, 500);
-    const appUrl = env.APP_URL || "https://yildizavcilari.cryme.tr";   // domain cutover: APP_URL env'i set et
+    const appUrl = env.APP_URL || "https://yildizavcilari.com";   // domain cutover: APP_URL env'i set et
     /* --- public: aile kodu -> o ailenin login uyeleri (PIN yok; mahremiyet: yalniz ilk ad + avatar).
        Cok-aileli: kodu bilmeyen kimse baska ailenin cocuklarini goremez (GDPR/KVKK).
        Root admin: kendi login_code'u ile girer (aile listesine cikmaz). --- */
