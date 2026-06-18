@@ -8,7 +8,7 @@ Kids complete daily and weekly tasks, upload proof, a parent approves, and the *
 
 Built so that a real reward (a gift) isn't just handed over for free, but **earned** through good habits — turned into a fun game.
 
-**🕹️ Live showcase:** [yildizavcilari.cryme.tr/demo.html](https://yildizavcilari.cryme.tr/demo.html) (TR/EN)
+**🕹️ Live showcase:** [yildizavcilari.com/tanitim](https://yildizavcilari.com/tanitim) (TR/EN)
 
 > Built with "vibe coding" — designed and shipped end-to-end with an AI coding agent.
 
@@ -54,7 +54,7 @@ The task catalog lives in code; everything user-generated lives in D1.
 yildiz-avcilari/
 ├── public/
 │   ├── index.html        # the whole app (frontend)
-│   └── demo.html          # bilingual (TR/EN) showcase page
+│   └── tanitim.html       # bilingual (TR/EN) landing / about page
 ├── functions/
 │   └── api/[[path]].js    # Pages Functions API (auth, tasks, approvals, AI chat, rewards)
 ├── backend/

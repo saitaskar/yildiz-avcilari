@@ -3,20 +3,36 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+/* canonical: tanitim yalniz yildizavcilari.com'da; diger yildizavcilari hostlari ona yonlensin */
+(function(){var h=location.hostname;if(h.indexOf("yildizavcilari")>=0 && h!=="yildizavcilari.com" && h!=="localhost"){location.replace("https://yildizavcilari.com"+location.pathname+location.search+location.hash);}})();
+</script>
 <title>Yıldız Avcıları · Görev yap, yıldız topla, ödülü aç</title>
-<meta name="description" content="Çocuklar için oyunlaştırılmış görev ve ödül portalı. Günlük alışkanlıklar, öğrenme, ekransız zaman; toplanan yıldızlarla gizemli ödül açılır. Aile onaylı, güvenli, reklamsız.">
+<meta name="description" content="Çocuklar için oyunlaştırılmış görev ve ödül portalı. Günlük alışkanlıklar, öğrenme ve ekransız zaman birer maceraya dönüşür; toplanan yıldızlarla gizemli ödül açılır. Aile onaylı, güvenli, reklamsız. A gamified, RPG-themed family task portal that helps kids build good habits.">
+<link rel="canonical" href="https://yildizavcilari.com/tanitim">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://yildizavcilari.com/tanitim">
 <meta property="og:title" content="Yıldız Avcıları · Görev yap, yıldız topla, ödülü aç">
-<meta property="og:description" content="Çocuklar için oyunlaştırılmış görev/ödül portalı. Aile onaylı, güvenli, reklamsız.">
+<meta property="og:description" content="Çocuklar için oyunlaştırılmış görev/ödül portalı. 5 RPG dünyası, öğrenme sohbeti, aile onayı. Güvenli, reklamsız. A gamified family task portal for kids.">
 <meta property="og:image" content="https://yildizavcilari.com/icon-512.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Yıldız Avcıları · Star Hunters">
+<meta name="twitter:description" content="A gamified, RPG-themed family task portal that helps kids build good habits. Collect stars, unlock a mystery reward.">
+<meta name="twitter:image" content="https://yildizavcilari.com/icon-512.png">
 <link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{ --bg:#0E0A2A; --bg2:#1A1147; --card:#fff; --ink:#1C1340; --ink60:rgba(28,19,64,.62);
-  --primary:#6C2BD9; --primary-deep:#4A148C; --gold:#FFD166; --pink:#FF6FB5; --cyan:#5EE7FF; }
+:root{
+  --bg:#0E0A2A; --bg2:#1A1147; --card:rgba(255,255,255,.06); --line:rgba(255,255,255,.12);
+  --ink:#fff; --ink70:rgba(255,255,255,.74); --ink55:rgba(255,255,255,.55);
+  --primary:#6C2BD9; --primary-deep:#4A148C; --gold:#FFD166; --pink:#FF6FB5; --cyan:#5EE7FF;
+}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'Nunito',sans-serif;background:var(--bg);color:#fff;line-height:1.6;overflow-x:hidden;}
+a{color:inherit;}
 .stars{position:fixed;inset:0;z-index:0;pointer-events:none;
   background-image:radial-gradient(1.5px 1.5px at 20px 30px,#fff,transparent),radial-gradient(1.5px 1.5px at 130px 80px,#fff8,transparent),radial-gradient(2px 2px at 220px 50px,#fff,transparent),radial-gradient(1.5px 1.5px at 300px 140px,#fffa,transparent),radial-gradient(1.5px 1.5px at 80px 180px,#fff7,transparent);
   background-repeat:repeat;background-size:340px 220px;opacity:.5;animation:tw 6s ease-in-out infinite;}
@@ -25,41 +41,129 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:#fff;line-height
   radial-gradient(600px 400px at 50% -10%,rgba(108,43,217,.55),transparent),
   radial-gradient(500px 360px at 90% 20%,rgba(255,111,181,.25),transparent),
   radial-gradient(500px 360px at 5% 60%,rgba(94,231,255,.18),transparent);}
-.wrap{position:relative;z-index:1;max-width:960px;margin:0 auto;padding:0 22px;}
-header{display:flex;align-items:center;justify-content:space-between;padding:20px 0;}
+.wrap{position:relative;z-index:1;max-width:980px;margin:0 auto;padding:0 22px;}
+
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px 0;flex-wrap:wrap;}
 .logo{display:flex;align-items:center;gap:9px;font-family:'Fredoka',sans-serif;font-weight:700;font-size:20px;}
 .logo .s{font-size:24px;filter:drop-shadow(0 0 8px var(--gold));}
-.nav-cta{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;text-decoration:none;font-weight:700;padding:9px 18px;border-radius:99px;font-size:14px;}
-.hero{text-align:center;padding:40px 0 26px;}
+.head-r{display:flex;align-items:center;gap:10px;}
+.lang{display:flex;gap:0;background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:99px;overflow:hidden;}
+.lang button{background:transparent;border:none;color:var(--ink55);padding:7px 13px;font-weight:800;font-size:13px;cursor:pointer;font-family:'Nunito',sans-serif;}
+.lang button.on{background:var(--primary);color:#fff;}
+.nav-cta{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;text-decoration:none;font-weight:700;padding:9px 18px;border-radius:99px;font-size:14px;white-space:nowrap;}
+
+.hero{text-align:center;padding:42px 0 26px;}
 .hero .badge{display:inline-block;background:rgba(255,209,102,.16);border:1px solid rgba(255,209,102,.4);color:var(--gold);font-weight:700;font-size:12.5px;letter-spacing:.04em;padding:6px 14px;border-radius:99px;text-transform:uppercase;}
 .hero h1{font-family:'Fredoka',sans-serif;font-size:clamp(34px,7.5vw,62px);font-weight:700;line-height:1.05;margin:18px 0 0;letter-spacing:-.01em;}
 .hero h1 em{font-style:normal;background:linear-gradient(120deg,var(--gold),var(--pink));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
-.hero p{color:rgba(255,255,255,.78);font-size:clamp(16px,2.4vw,19px);max-width:580px;margin:18px auto 0;}
-.cta{display:inline-block;margin-top:28px;padding:17px 44px;border-radius:18px;text-decoration:none;font-family:'Fredoka',sans-serif;font-weight:700;font-size:19px;color:#fff;background:linear-gradient(135deg,var(--primary),var(--pink));box-shadow:0 16px 40px -12px rgba(255,111,181,.6);transition:transform .15s;}
+.hero .lead-p{color:var(--ink70);font-size:clamp(16px,2.4vw,19px);max-width:600px;margin:18px auto 0;}
+.cta{display:inline-block;margin-top:26px;padding:17px 44px;border-radius:18px;text-decoration:none;font-family:'Fredoka',sans-serif;font-weight:700;font-size:19px;color:#fff;background:linear-gradient(135deg,var(--primary),var(--pink));box-shadow:0 16px 40px -12px rgba(255,111,181,.6);transition:transform .15s;}
 .cta:hover{transform:translateY(-2px);}
-.cta-sub{font-size:13px;color:rgba(255,255,255,.6);margin-top:12px;}
-.silo{margin:34px auto 0;width:160px;height:120px;position:relative;}
+.cta-sub{font-size:13px;color:var(--ink55);margin-top:12px;}
+.silo{margin:30px auto 0;width:170px;height:124px;position:relative;}
 .silo .planet{position:absolute;border-radius:50%;animation:float 5s ease-in-out infinite;}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:15px;padding:44px 0 10px;}
-.f{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:22px 20px;backdrop-filter:blur(6px);}
+
+.section{padding:34px 0;}
+.lead{text-align:center;font-size:12.5px;letter-spacing:.18em;color:var(--gold);font-weight:800;text-transform:uppercase;margin-bottom:8px;}
+.h2{font-family:'Fredoka',sans-serif;font-size:clamp(24px,4.5vw,34px);text-align:center;font-weight:700;line-height:1.15;}
+.sub{text-align:center;color:var(--ink70);max-width:600px;margin:10px auto 26px;font-size:15.5px;}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:15px;}
+.f{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px 20px;backdrop-filter:blur(6px);}
 .f .e{font-size:30px;display:block;margin-bottom:8px;}
 .f h3{font-family:'Fredoka',sans-serif;font-size:17px;margin-bottom:5px;font-weight:600;}
-.f p{font-size:14.5px;color:rgba(255,255,255,.72);}
-.sec-h{font-family:'Fredoka',sans-serif;font-size:clamp(24px,4.5vw,34px);text-align:center;margin:46px 0 26px;font-weight:700;}
-.how{max-width:600px;margin:0 auto;}
-.step{display:flex;gap:15px;align-items:flex-start;margin-bottom:18px;background:rgba(255,255,255,.05);border-radius:16px;padding:16px 18px;}
+.f p{font-size:14.5px;color:var(--ink70);}
+
+.how{max-width:620px;margin:0 auto;}
+.step{display:flex;gap:15px;align-items:flex-start;margin-bottom:14px;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:16px;padding:16px 18px;}
 .step .n{width:34px;height:34px;border-radius:11px;background:linear-gradient(135deg,var(--gold),var(--pink));color:#1C1340;display:flex;align-items:center;justify-content:center;font-weight:800;flex:0 0 auto;font-family:'Fredoka',sans-serif;}
 .step b{display:block;font-size:16px;font-family:'Fredoka',sans-serif;font-weight:600;}
-.step small{color:rgba(255,255,255,.7);font-size:14px;}
-.trust{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:22px;padding:26px 24px;margin:30px 0;text-align:center;}
+.step small{color:var(--ink70);font-size:14px;}
+
+/* reveal slider */
+.silo-card{background:linear-gradient(160deg,#241046,#3A1D6E);border:1px solid var(--line);border-radius:24px;padding:28px 22px;text-align:center;max-width:560px;margin:0 auto;}
+.silo-stage{position:relative;height:200px;display:flex;align-items:center;justify-content:center;}
+.silo-glow{position:absolute;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(255,111,181,.5),transparent 65%);filter:blur(10px);}
+.silo-gift{position:relative;font-size:124px;line-height:1;transition:filter .25s ease;}
+.reveal-text{font-weight:800;font-size:18px;min-height:24px;margin-top:6px;}
+.xpbar{height:16px;background:rgba(255,255,255,.18);border-radius:10px;overflow:hidden;margin:14px 0 8px;}
+.xpbar-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--pink));border-radius:10px;transition:width .2s;}
+.slider-row{display:flex;align-items:center;gap:12px;margin-top:14px;}
+.slider-row span{font-size:12px;color:var(--ink55);white-space:nowrap;}
+input[type=range]{flex:1;accent-color:var(--pink);height:6px;}
+.silo-hint{font-size:13px;color:#D7C9F2;margin-top:14px;}
+
+/* checkpoint demo */
+.cp-card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:24px 20px;max-width:560px;margin:0 auto;}
+.cp-bar{position:relative;height:16px;background:rgba(255,255,255,.12);border-radius:10px;margin:6px 0 20px;}
+.cp-fill{position:absolute;height:100%;width:42%;background:linear-gradient(90deg,var(--gold),var(--pink));border-radius:10px;}
+.cp-tick{position:absolute;top:0;width:3px;height:100%;background:var(--gold);box-shadow:0 0 7px rgba(255,209,102,.95);transform:translateX(-50%);border-radius:2px;}
+.cp-tick.off{background:rgba(255,255,255,.5);box-shadow:none;}
+.cp-item{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;padding:9px 13px;border:1px solid var(--line);border-radius:10px;margin-bottom:7px;text-align:left;}
+
+/* worlds */
+.themes{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:13px;}
+.theme{border-radius:20px;padding:18px 16px;color:#fff;min-height:158px;display:flex;flex-direction:column;justify-content:space-between;border:1px solid rgba(255,255,255,.14);}
+.theme .ico{font-size:38px;}
+.theme .cls{font-size:11px;font-weight:800;opacity:.85;text-transform:uppercase;letter-spacing:.08em;}
+.theme .nm{font-family:'Fredoka',sans-serif;font-weight:700;font-size:17px;margin:2px 0 6px;}
+.theme .ex{font-size:12.5px;opacity:.94;line-height:1.4;}
+
+/* device mockups */
+.screen{background:#140E2E;border:1px solid var(--line);border-radius:20px;padding:16px;max-width:430px;margin:0 auto;}
+.screen-title{font-size:14px;font-weight:800;font-family:'Fredoka',sans-serif;}
+.screen-sub{font-size:12px;color:var(--ink55);margin-bottom:14px;}
+.tk{display:flex;align-items:center;gap:11px;padding:11px;border:1px solid var(--line);border-radius:12px;margin-bottom:9px;}
+.tk-ico{width:42px;height:42px;border-radius:10px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.tk-b{flex:1;min-width:0;text-align:left;}
+.tk-t{font-weight:700;font-size:14px;}
+.tk-m{margin-top:3px;}
+.tk-chip{display:inline-block;background:rgba(255,209,102,.18);color:var(--gold);border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;margin-right:4px;}
+.tk-chip.win{background:rgba(94,231,255,.16);color:var(--cyan);}
+.tk-chip.fire{background:rgba(255,111,181,.18);color:var(--pink);}
+.tk-btn{background:var(--primary);color:#fff;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;flex-shrink:0;}
+.tk-done{color:#5EE7FF;font-size:22px;flex-shrink:0;}
+.ap{border:1px solid var(--line);border-radius:14px;padding:14px;text-align:left;}
+.ap-h{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.ap-av{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:18px;}
+.ap-proof{background:rgba(108,43,217,.22);border-radius:10px;padding:9px 12px;font-size:13px;margin:8px 0;color:#D7C9F2;}
+.ap-acts{display:flex;gap:8px;margin-top:10px;}
+.ap-ok{flex:1;background:linear-gradient(135deg,#1f9d55,#2bbd6e);color:#fff;border-radius:10px;padding:9px;text-align:center;font-weight:700;font-size:13px;}
+.ap-no{flex:1;border:2px solid rgba(255,111,181,.6);color:#ffb3d4;border-radius:10px;padding:9px;text-align:center;font-weight:700;font-size:13px;}
+
+/* chat */
+.chat{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;max-width:560px;margin:0 auto;}
+.chat-head{font-size:13px;color:var(--ink55);margin-bottom:12px;text-align:center;}
+.bubble{padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.45;max-width:86%;margin-bottom:8px;}
+.bubble.bot{background:rgba(255,255,255,.09);color:#fff;border-bottom-left-radius:4px;}
+.bubble.me{background:var(--primary);color:#fff;border-bottom-right-radius:4px;margin-left:auto;}
+.bubble.win{background:linear-gradient(90deg,#1f9d55,#2bbd6e);color:#fff;text-align:center;max-width:100%;font-weight:700;}
+
+/* motivation */
+.mot{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;}
+.mc{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px 20px;text-align:center;}
+.mc .e{font-size:34px;}
+.mc h3{font-family:'Fredoka',sans-serif;font-size:17px;margin:8px 0 5px;font-weight:600;}
+.mc p{font-size:14px;color:var(--ink70);}
+
+/* onboarding cinematic */
+.cine{background:linear-gradient(160deg,#140C2E,#3A1055);border:1px solid var(--line);border-radius:24px;padding:30px 22px;text-align:center;max-width:560px;margin:0 auto;}
+.cine-badge{font-size:12px;letter-spacing:.22em;color:var(--gold);font-weight:800;margin-bottom:14px;}
+.cine-h{font-family:'Fredoka',sans-serif;font-size:24px;font-weight:700;background:linear-gradient(90deg,var(--gold),var(--pink));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:12px;line-height:1.3;}
+
+.pillrow{text-align:center;}
+.pill{display:inline-block;background:rgba(94,231,255,.1);border:1px solid rgba(94,231,255,.28);color:var(--cyan);border-radius:20px;padding:6px 13px;font-size:12.5px;font-weight:700;margin:3px;}
+
+.trust{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:26px 24px;margin:14px 0;text-align:center;}
 .trust h2{font-family:'Fredoka',sans-serif;font-size:21px;margin-bottom:8px;font-weight:600;}
-.trust .pills{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px;}
-.pill{background:rgba(94,231,255,.12);border:1px solid rgba(94,231,255,.3);color:var(--cyan);font-weight:700;font-size:13px;padding:7px 14px;border-radius:99px;}
-.bottom{text-align:center;padding:36px 0 30px;}
-footer{text-align:center;color:rgba(255,255,255,.5);font-size:13px;padding:30px 0 48px;border-top:1px solid rgba(255,255,255,.12);margin-top:30px;}
-footer a{color:rgba(255,255,255,.78);text-decoration:none;font-weight:700;margin:0 5px;}
+.trust .tpills{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px;}
+
+.bottom{text-align:center;padding:30px 0 20px;}
+footer{text-align:center;color:var(--ink55);font-size:13px;padding:30px 0 48px;border-top:1px solid var(--line);margin-top:24px;}
+footer a{color:var(--ink70);text-decoration:none;font-weight:700;margin:0 5px;}
 footer a:hover{color:#fff;}
+@media(max-width:560px){ .hero{padding-top:28px;} }
 </style>
 </head>
 <body>
@@ -67,63 +171,382 @@ footer a:hover{color:#fff;}
 <div class="wrap">
   <header>
     <div class="logo"><span class="s">🌟</span> Yıldız Avcıları</div>
-    <a class="nav-cta" href="/">Giriş yap</a>
+    <div class="head-r">
+      <div class="lang">
+        <button id="btnTr" onclick="setLang('tr')">TR</button>
+        <button id="btnEn" onclick="setLang('en')">EN</button>
+      </div>
+      <a class="nav-cta" id="navCta" href="/">Giriş yap</a>
+    </div>
   </header>
-
-  <section class="hero">
-    <span class="badge">Aile onaylı · Reklamsız · Güvenli</span>
-    <h1>Görev yap,<br><em>yıldızları topla</em>,<br>ödülü aç!</h1>
-    <p>Çocuklar için oyunlaştırılmış görev ve ödül portalı. Günlük alışkanlıklar, öğrenme ve ekransız zaman birer maceraya dönüşür; toplanan yıldızlarla karatahtadaki gizemli ödül yavaşça açılır.</p>
-    <div class="silo">
-      <div class="planet" style="width:70px;height:70px;left:45px;top:20px;background:radial-gradient(circle at 35% 30%,#9b6cff,#4A148C);box-shadow:0 0 40px rgba(108,43,217,.7)"></div>
-      <div class="planet" style="width:22px;height:22px;left:10px;top:65px;background:radial-gradient(circle at 35% 30%,var(--gold),#c98a00);animation-delay:.6s"></div>
-      <div class="planet" style="width:16px;height:16px;right:14px;top:8px;background:radial-gradient(circle at 35% 30%,var(--cyan),#1b7a8c);animation-delay:1.1s"></div>
-    </div>
-    <div style="margin-top:8px"><a class="cta" href="/">Hemen başla ✨</a></div>
-    <div class="cta-sub">Aile hesabı ücretsiz · 2 dakikada kur</div>
-  </section>
-
-  <section class="grid">
-    <div class="f"><span class="e">⭐</span><h3>Yıldız ekonomisi</h3><p>Her görev yıldız kazandırır. Seriler ve haftalık görevler büyük ödüle yaklaştırır.</p></div>
-    <div class="f"><span class="e">🧩</span><h3>RPG temaları</h3><p>Galaktik kâşif, fantastik diyar ya da piksel evren; çocuk maceranın kahramanı olur.</p></div>
-    <div class="f"><span class="e">🧠</span><h3>Öğrenme sohbeti</h3><p>Akıllı rehber, çocuğun o gün öğrendiğini kendi cümleleriyle anlatmasını ister.</p></div>
-    <div class="f"><span class="e">✅</span><h3>Aile onayı</h3><p>Görevleri ebeveyn onaylar. Fotoğraf kanıtı, ara ödüller ve gerçek ödüller sizde.</p></div>
-    <div class="f"><span class="e">🎯</span><h3>Ara ödüller</h3><p>Büyük ödüle giderken küçük hedefler koyun; çocuk yol boyunca motive kalır.</p></div>
-    <div class="f"><span class="e">🔒</span><h3>Mahremiyet</h3><p>Çocukların e-postası yok, reklam yok, veri satışı yok. Her aile yalnız kendi verisini görür.</p></div>
-  </section>
-
-  <h2 class="sec-h">Nasıl çalışır?</h2>
-  <section class="how">
-    <div class="step"><div class="n">1</div><div><b>Aileni kur</b><small>E-posta veya Google ile giriş yap, ailene bir ad ver.</small></div></div>
-    <div class="step"><div class="n">2</div><div><b>Çocuk profillerini ekle</b><small>Her çocuk için ad ve avatar; istersen küçük bir PIN.</small></div></div>
-    <div class="step"><div class="n">3</div><div><b>Çocuk görevleri yapar</b><small>Diş fırçalama, kitap, ekransız zaman, öğrenme; her biri yıldız.</small></div></div>
-    <div class="step"><div class="n">4</div><div><b>Sen onaylarsın, ödül açılır</b><small>Onayladıkça yıldız birikir, gizemli ödül netleşir, çocuk kazanır.</small></div></div>
-  </section>
-
-  <div class="trust">
-    <h2>Ailelere güven sözü</h2>
-    <p style="color:rgba(255,255,255,.78);max-width:560px;margin:0 auto">Bu bir çocuk uygulaması. Çocuk verisini en aza indiriyoruz, veliden açık rıza alıyoruz, hiçbir şeyi satmıyoruz.</p>
-    <div class="pills">
-      <span class="pill">KVKK + GDPR uyumlu</span>
-      <span class="pill">Reklamsız</span>
-      <span class="pill">Veri satışı yok</span>
-      <span class="pill">Aile izolasyonu</span>
-      <span class="pill">İstediğin an sil</span>
-    </div>
-  </div>
-
-  <div class="bottom"><a class="cta" href="/">Ailenle başla ✨</a></div>
-
-  <footer>
-    🌟 Yıldız Avcıları · İstanbul'da bireysel geliştirici tarafından sevgiyle yapıldı<br>
-    <div style="margin-top:10px">
-      <a href="/kosullar.html">Kullanım Koşulları</a>·
-      <a href="/gizlilik.html">Gizlilik (KVKK)</a>·
-      <a href="/cocuk-guvenligi.html">Çocuk Güvenliği</a>·
-      <a href="/kurallar.html">Kurallar</a>·
-      <a href="/hesap-sil.html">Hesap Silme</a>
-    </div>
-  </footer>
+  <div id="app"></div>
 </div>
+
+<script>
+const T = {
+  tr:{
+    navCta:"Giriş yap",
+    badge:"Aile onaylı · Reklamsız · Güvenli",
+    h1:'Görev yap,<br><em>yıldızları topla</em>,<br>ödülü aç!',
+    desc:"Çocuklar için oyunlaştırılmış görev ve ödül portalı. Günlük alışkanlıklar, öğrenme ve ekransız zaman birer maceraya dönüşür; toplanan yıldızlarla karatahtadaki gizemli ödül adım adım açılır.",
+    cta:"Hemen başla ✨", ctaSub:"Aile hesabı ücretsiz · 2 dakikada kur",
+
+    featLead:"Tek bakışta", featH:"Çocuğun motivasyonu, ailenin kontrolü",
+    feats:[
+      ["⭐","Yıldız ekonomisi","Her görev yıldız kazandırır. Günlük seriler ve haftalık görevler büyük ödüle yaklaştırır."],
+      ["🧩","5 RPG dünyası","Galaktik kâşiften süper kahramana; çocuk kendi temasını seçer, arayüz ve görevler o dünyaya bürünür."],
+      ["🧠","Öğrenme sohbeti","Akıllı rehber, çocuğun o gün öğrendiğini kendi cümleleriyle anlatmasını ister. Ezber ve kopyala geçmez."],
+      ["✅","Aile onayı","Görevleri ebeveyn onaylar. Fotoğraf kanıtı, ara ödüller ve büyük ödül sizin elinizde."],
+      ["🔥","Seri, rütbe, rozet","Üst üste günler seri yapar, yıldızlar rütbe atlatır, başarımlar rozet kazandırır."],
+      ["🔒","Mahremiyet","Çocukların e-postası yok, reklam yok, veri satışı yok. Her aile yalnız kendi verisini görür."]
+    ],
+
+    howLead:"Nasıl Çalışır", howH:"Dört adımda ödüle",
+    howSub:"Bir aile hesabı kurarsınız, çocuk profillerini eklersiniz. Görevler gerçek hayatta yapılır, kanıtı yüklenir, onaylanınca yıldız havuza düşer.",
+    steps:[
+      ["1","Aileni kur","E-posta ile giriş yap (parola ya da e-postana gelen kod), ailene bir ad ver."],
+      ["2","Çocuk profillerini ekle","Her çocuk için ad ve avatar; istersen küçük bir PIN. Çocuğa e-posta gerekmez."],
+      ["3","Çocuk görevleri yapar","Diş fırçalama, kitap, ekransız zaman, öğrenme; her biri yıldız kazandırır."],
+      ["4","Sen onaylarsın, ödül açılır","Onayladıkça yıldız birikir, gizemli ödül netleşir, çocuk kazanır."]
+    ],
+
+    revLead:"Merak Mekaniği", revH:"Ödülü sen ortaya çıkar",
+    revSub:"Ödül başta bir gölge. Yıldız topladıkça netleşir. Kaydırıcıyı oynat, ödülün nasıl açıldığını gör.",
+    miles:[[0,"Gizemli ödül..."],[25,"Bir şeyler parıldıyor ✨"],[50,"Yarı yarıya yaklaştın!"],[75,"Neredeyse oldu..."],[100,"Büyük ödülü kazandın! 🎉"]],
+    revHint:"Karne günü %100'e ulaşınca büyük ödül açılır. Ödülü aile belirler, çocuktan gizli kalır.",
+
+    cpLead:"Ara Ödüller", cpH:"Yolda küçük hedefler",
+    cpSub:"Aile, büyük ödüle giderken çocuğa ara ödül noktaları koyar. Çocuk yıldız barında bunları görür, ulaşınca kutlama olur. Büyük ödül yine gizli kalır.",
+    cpItems:[["🎯","500 ⭐","Sinema gecesi"],["🎯","1000 ⭐","Yeni kitap"],["🎯","1500 ⭐","Kablosuz kulaklık"]],
+
+    worldLead:"Beş Dünya", worldH:"Çocuk kendi dünyasını seçer",
+    worldSub:"İlk girişte bir sınıf seçilir; tüm arayüz, renkler, görev isimleri ve rehber bot o dünyaya bürünür.",
+    themes:[
+      ["🚀","Kaptan","Galaktik Kâşif","'Yer Çekimi Kalkanları' · Rehber: NOVA 🛸 · Ödül: gizli gemi","linear-gradient(135deg,#0A1530,#00415C)"],
+      ["⚔️","Şövalye","Fantastik Diyarlar","'Beyaz Zırh Bakımı' · Rehber: Eldric 🧙 · Ödül: kutsal eser","linear-gradient(150deg,#2C4220,#4A3517)"],
+      ["🧱","Usta","Piksel Evreni","'Spawn Noktasını Düzenle' · Rehber: Bit 🤖 · Ödül: nadir materyal","linear-gradient(150deg,#1F4D2B,#2E7438)"],
+      ["🌊","Kâşif","Derin Deniz Kâşifi","'Oksijen Tankını Doldur' · Rehber: Mercan 🐬 · Ödül: kayıp hazine","linear-gradient(150deg,#072A3D,#0A4A63)"],
+      ["🦸","Kahraman","Şehrin Kahramanı","'Enerji Hücresini Şarj Et' · Rehber: Vızıltı 🤖 · Ödül: süper güç","linear-gradient(150deg,#1E2A52,#7A1530)"]
+    ],
+
+    kidLead:"Çocuğun Ekranı", kidH:"Bir günün görevleri",
+    kidSub:"Zamanı gelen görevler aktif olur; her görev seçilen temaya göre isim alır (örnek: Galaktik Kâşif).",
+    kidScreenTitle:"🦁 Demir · Kaptan", kidScreenSub:"Bugünün seferleri · 🔥 5 günlük seri",
+    kidTasks:[
+      ["🛏️","Yer Çekimi Kalkanları","+15 ⭐ · 🕐 07-11","fire","🔥 5g","Yaptım"],
+      ["🦷","Sonik Kalkan · şafak","✓ Tamamlandı","done","","" ],
+      ["💧","Soğutma Sıvısı 2/3","+3 ⭐ · 🕐 gün boyu","","","Yaptım"],
+      ["🧠","Keşif Raporu","+150 ⭐ · haftalık · sohbet","","","Başla"]
+    ],
+
+    famLead:"Ailenin Ekranı", famH:"Tek dokunuşla onay",
+    famSub:"Çocuk kanıtı gönderir; anne, baba ya da teyze onaylar, yıldız havuza düşer. Onay bekleyen görev olunca bildirim alırsınız. (Öğrenme sohbeti otomatik onaylanır.)",
+    famTitle:"Onay bekleyenler", famSub2:"Elif · Demir ve Kuzey için",
+    famName:"Demir", famTask:"· 🛏️ Yatağını topla", famWhen:"08:42 · +15 ⭐",
+    famProof:"📷 Fotoğraf eklendi", famNo:"✕ Reddet", famOk:"✓ Onayla",
+
+    learnLead:"Akıllı Öğrenme", learnH:"Bot ile sohbet ederek öğren",
+    learnSub:"'Yeni bir şey öğren' görevinde rehber bot çocukla sohbet eder, gerçekten anlayıp anlamadığını sorularla test eder. Ezber ve kopyala-yapıştır geçmez, çaba ödüllenir.",
+    chatHead:"🛸 NOVA ile öğrenme sohbeti",
+    chat:[
+      ["bot","Selam Kaptan! Bugün ne keşfettin, anlat bakalım."],
+      ["me","Böceklerin nasıl nefes aldığını öğrendim"],
+      ["bot","Merak ettim! Peki nasıl nefes alıyorlar, burunları mı var?"],
+      ["me","Yok, vücutlarındaki küçük deliklerden alıyorlarmış"],
+      ["bot","Vay! Bu deliklere ne ad veriliyor, biliyor musun?"],
+      ["me","Trake deniyormuş, hava direkt vücutlarına giriyor"],
+      ["win","⭐ Harika anlattın, gerçekten öğrenmişsin! +150 Yıldız"]
+    ],
+
+    motLead:"Motivasyon", motH:"Devam etmek için küçük dürtüler",
+    motSub:"Çocukları zorlamadan, oyunun kendi mekaniğiyle motive ederiz.",
+    mot:[
+      ["🔥","Günlük seri","Aynı görevi üst üste yaptıkça seri büyür; 3. günden sonra her gün bonus yıldız."],
+      ["🏅","Rütbe","Yıldız biriktikçe çocuk kendi temasında rütbe atlar: Çaylak'tan Efsane'ye."],
+      ["🎖️","Rozetler","İlk hafta, 10 kitap, erken kuş... başarımlar koleksiyona eklenir."]
+    ],
+
+    onbLead:"İlk Giriş", onbH:"Maceraya başlangıç",
+    onbSub:"Çocuk ilk girişte sinematik bir karşılama görür, bir dünya seçer ve rehber bot sistemi oyun gibi anlatır.",
+    cineBadge:"BÜYÜK KARNE SEZONU", cineH:"Hedefe giden yolda<br>kaderini seç...",
+    cineTxt:"Görevleri tamamla, gücünü topla, ödülü hak et.", cineSteps:"① Dünya seç → ② Rehber bot tanıtır → ③ Maceraya başla",
+
+    taskLead:"Görevler", taskH:"Günlük rutinler + haftalık hedefler",
+    taskSub:"Zamanı gelince açılan, yaşa göre uyarlanan görevler. Aile dilediği çocuğa özel görev de tanımlayabilir.",
+    pills:["🦷 Diş fırçalama","🛏️ Yatak toplama","💧 Su içme","🧼 El yıkama","🥗 Sağlıklı yemek","🏆 Spor","📚 Kitap okuma","📵 Ekransız mola","🧠 Öğrenme sohbeti","🤝 Yardım","✨ Özel görev"],
+
+    trustH:"Ailelere güven sözü",
+    trustP:"Bu bir çocuk uygulaması. Çocuk verisini en aza indiriyoruz, veliden açık rıza alıyoruz, hiçbir şeyi satmıyoruz.",
+    tpills:["KVKK + GDPR uyumlu","Reklamsız","Veri satışı yok","Aile izolasyonu","İstediğin an sil"],
+
+    finalCta:"Ailenle başla ✨",
+    footTxt:"🌟 Yıldız Avcıları · İstanbul'da bireysel geliştirici tarafından sevgiyle yapıldı",
+    legal:[["/kosullar.html","Kullanım Koşulları"],["/gizlilik.html","Gizlilik (KVKK)"],["/cocuk-guvenligi.html","Çocuk Güvenliği"],["/kurallar.html","Kurallar"],["/hesap-sil.html","Hesap Silme"]]
+  },
+
+  en:{
+    navCta:"Log in",
+    badge:"Family-approved · Ad-free · Safe",
+    h1:'Do tasks,<br><em>collect the stars</em>,<br>unlock the reward!',
+    desc:"A gamified task and reward portal for kids. Daily habits, learning and screen-free time turn into an adventure; collected stars slowly reveal the mystery reward on the board.",
+    cta:"Get started ✨", ctaSub:"Free family account · set up in 2 minutes",
+
+    featLead:"At a glance", featH:"Motivation for kids, control for parents",
+    feats:[
+      ["⭐","Star economy","Every task earns stars. Daily streaks and weekly tasks move kids closer to the big reward."],
+      ["🧩","5 RPG worlds","From galactic explorer to super hero; the kid picks a theme and the whole interface and tasks transform into it."],
+      ["🧠","Learning chat","A smart guide asks the kid to explain what they learned in their own words. Memorizing and copy-paste don't pass."],
+      ["✅","Family approval","Parents approve tasks. Photo proof, milestone rewards and the big prize stay in your hands."],
+      ["🔥","Streaks, ranks, badges","Consecutive days build a streak, stars raise the rank, achievements earn badges."],
+      ["🔒","Privacy","Kids have no email, no ads, no data selling. Each family sees only its own data."]
+    ],
+
+    howLead:"How It Works", howH:"Four steps to the reward",
+    howSub:"You create a family account and add child profiles. Tasks are done in real life, proof is uploaded, and once approved the stars drop into the pool.",
+    steps:[
+      ["1","Create your family","Log in with email (a password or a code sent to your inbox), give your family a name."],
+      ["2","Add child profiles","A name and avatar for each kid; a small PIN if you like. Kids need no email."],
+      ["3","Kids do the tasks","Brushing teeth, reading, screen-free time, learning; each one earns stars."],
+      ["4","You approve, reward unlocks","As you approve, stars add up, the mystery reward sharpens, the kid wins."]
+    ],
+
+    revLead:"The Reveal", revH:"Uncover the reward yourself",
+    revSub:"The reward starts as a shadow. It sharpens as stars are collected. Drag the slider to see how it unlocks.",
+    miles:[[0,"Mystery reward..."],[25,"Something is glowing ✨"],[50,"Halfway there!"],[75,"Almost there..."],[100,"You won the big reward! 🎉"]],
+    revHint:"On report-card day, reaching 100% unlocks the big reward. The family sets the prize; it stays hidden from the kid.",
+
+    cpLead:"Milestone Rewards", cpH:"Small goals along the way",
+    cpSub:"On the way to the big prize, the family sets intermediate reward points. The kid sees them on the star bar; reaching one triggers a celebration. The big prize stays hidden.",
+    cpItems:[["🎯","500 ⭐","Movie night"],["🎯","1000 ⭐","New book"],["🎯","1500 ⭐","Wireless headphones"]],
+
+    worldLead:"Five Worlds", worldH:"The kid picks their own world",
+    worldSub:"A class is chosen at first login; the whole interface, colors, task names and guide bot transform into that world.",
+    themes:[
+      ["🚀","Captain","Galactic Explorer","'Activate Gravity Shields' · Guide: NOVA 🛸 · Prize: hidden ship","linear-gradient(135deg,#0A1530,#00415C)"],
+      ["⚔️","Knight","Fantasy Realms","'Polish the White Armor' · Guide: Eldric 🧙 · Prize: holy relic","linear-gradient(150deg,#2C4220,#4A3517)"],
+      ["🧱","Builder","Pixel Universe","'Set Up the Spawn Point' · Guide: Bit 🤖 · Prize: rare material","linear-gradient(150deg,#1F4D2B,#2E7438)"],
+      ["🌊","Diver","Deep Sea Explorer","'Fill the Oxygen Tank' · Guide: Mercan 🐬 · Prize: lost treasure","linear-gradient(150deg,#072A3D,#0A4A63)"],
+      ["🦸","Hero","City Hero","'Charge the Power Cell' · Guide: Vızıltı 🤖 · Prize: super power","linear-gradient(150deg,#1E2A52,#7A1530)"]
+    ],
+
+    kidLead:"The Kid's Screen", kidH:"A day's missions",
+    kidSub:"Tasks become active when their time comes; each task is named after the chosen theme (e.g. Galactic Explorer).",
+    kidScreenTitle:"🦁 Demir · Captain", kidScreenSub:"Today's missions · 🔥 5-day streak",
+    kidTasks:[
+      ["🛏️","Gravity Shields","+15 ⭐ · 🕐 07-11","fire","🔥 5d","Done"],
+      ["🦷","Sonic Shield · dawn","✓ Completed","done","",""],
+      ["💧","Coolant Fluid 2/3","+3 ⭐ · 🕐 all day","","","Done"],
+      ["🧠","Discovery Report","+150 ⭐ · weekly · chat","","","Start"]
+    ],
+
+    famLead:"The Family's Screen", famH:"One-tap approval",
+    famSub:"The kid sends proof; mom, dad or aunt approves and the star drops into the pool. You get a notification when a task is waiting. (The learning chat is auto-approved.)",
+    famTitle:"Pending approvals", famSub2:"Elif · for Demir and Kuzey",
+    famName:"Demir", famTask:"· 🛏️ Make the bed", famWhen:"08:42 · +15 ⭐",
+    famProof:"📷 Photo attached", famNo:"✕ Reject", famOk:"✓ Approve",
+
+    learnLead:"Smart Learning", learnH:"Learn by chatting with a bot",
+    learnSub:"In the 'learn something new' task, the guide bot chats with the kid and tests real understanding with questions. Memorization and copy-paste don't pass; effort is rewarded.",
+    chatHead:"🛸 Learning chat with NOVA",
+    chat:[
+      ["bot","Hey Captain! What did you discover today, tell me about it."],
+      ["me","I learned how insects breathe"],
+      ["bot","I'm curious! So how do they breathe, do they have noses?"],
+      ["me","No, they breathe through tiny holes in their bodies"],
+      ["bot","Wow! Do you know what these holes are called?"],
+      ["me","They're called trachea, air goes straight into their bodies"],
+      ["win","⭐ Great explanation, you really learned it! +150 Stars"]
+    ],
+
+    motLead:"Motivation", motH:"Small nudges to keep going",
+    motSub:"We motivate kids with the game's own mechanics, without pressure.",
+    mot:[
+      ["🔥","Daily streak","Doing the same task on consecutive days builds a streak; after day 3, bonus stars every day."],
+      ["🏅","Ranks","As stars add up, the kid ranks up within their theme: from Rookie to Legend."],
+      ["🎖️","Badges","First week, 10 books, early bird... achievements join the collection."]
+    ],
+
+    onbLead:"First Login", onbH:"Start of the adventure",
+    onbSub:"On first login the kid sees a cinematic welcome, picks a world, and a guide bot explains the system like a game tutorial.",
+    cineBadge:"THE GREAT REPORT-CARD SEASON", cineH:"On the road to the goal,<br>choose your destiny...",
+    cineTxt:"Complete tasks, gather your power, earn the reward.", cineSteps:"① Pick a world → ② Guide bot explains → ③ Begin the adventure",
+
+    taskLead:"Tasks", taskH:"Daily routines + weekly goals",
+    taskSub:"Time-gated tasks, adapted to the kid's age. The family can also define custom tasks for any kid.",
+    pills:["🦷 Brush teeth","🛏️ Make the bed","💧 Drink water","🧼 Wash hands","🥗 Healthy meal","🏆 Exercise","📚 Read a book","📵 Screen-free break","🧠 Learning chat","🤝 Help out","✨ Custom task"],
+
+    trustH:"A promise of trust to families",
+    trustP:"This is a kids' app. We minimize child data, get explicit parental consent, and sell nothing.",
+    tpills:["KVKK + GDPR compliant","Ad-free","No data selling","Family isolation","Delete anytime"],
+
+    finalCta:"Start with your family ✨",
+    footTxt:"🌟 Yıldız Avcıları (Star Hunters) · made with love by an independent developer in Istanbul",
+    legal:[["/kosullar.html","Terms of Use"],["/gizlilik.html","Privacy (KVKK)"],["/cocuk-guvenligi.html","Child Safety"],["/kurallar.html","Rules"],["/hesap-sil.html","Delete Account"]]
+  }
+};
+
+let lang = (navigator.language||"tr").slice(0,2)==="tr" ? "tr" : "en";
+
+function render(){
+  const t = T[lang];
+  document.documentElement.lang = lang;
+  document.getElementById("btnTr").classList.toggle("on", lang==="tr");
+  document.getElementById("btnEn").classList.toggle("on", lang==="en");
+  document.getElementById("navCta").textContent = t.navCta;
+
+  document.getElementById("app").innerHTML = `
+    <section class="hero">
+      <span class="badge">${t.badge}</span>
+      <h1>${t.h1}</h1>
+      <p class="lead-p">${t.desc}</p>
+      <div class="silo">
+        <div class="planet" style="width:72px;height:72px;left:49px;top:18px;background:radial-gradient(circle at 35% 30%,#9b6cff,#4A148C);box-shadow:0 0 40px rgba(108,43,217,.7)"></div>
+        <div class="planet" style="width:22px;height:22px;left:10px;top:66px;background:radial-gradient(circle at 35% 30%,var(--gold),#c98a00);animation-delay:.6s"></div>
+        <div class="planet" style="width:16px;height:16px;right:16px;top:8px;background:radial-gradient(circle at 35% 30%,var(--cyan),#1b7a8c);animation-delay:1.1s"></div>
+      </div>
+      <div style="margin-top:8px"><a class="cta" href="/">${t.cta}</a></div>
+      <div class="cta-sub">${t.ctaSub}</div>
+    </section>
+
+    <section class="section">
+      <div class="lead">${t.featLead}</div><div class="h2">${t.featH}</div>
+      <div class="grid" style="margin-top:24px">
+        ${t.feats.map(f=>`<div class="f"><span class="e">${f[0]}</span><h3>${f[1]}</h3><p>${f[2]}</p></div>`).join("")}
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="lead">${t.howLead}</div><div class="h2">${t.howH}</div>
+      <p class="sub">${t.howSub}</p>
+      <div class="how">
+        ${t.steps.map(s=>`<div class="step"><div class="n">${s[0]}</div><div><b>${s[1]}</b><small>${s[2]}</small></div></div>`).join("")}
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="lead">${t.revLead}</div><div class="h2">${t.revH}</div>
+      <p class="sub">${t.revSub}</p>
+      <div class="silo-card">
+        <div class="silo-stage"><div class="silo-glow" id="glow"></div><div class="silo-gift" id="silo">🎁</div></div>
+        <div class="reveal-text" id="revText"></div>
+        <div class="xpbar"><div class="xpbar-fill" id="bar" style="width:50%"></div></div>
+        <div class="slider-row"><span id="pctLabel">%50</span><input type="range" id="slider" min="0" max="100" value="50"><span>🎁</span></div>
+        <div class="silo-hint">${t.revHint}</div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="lead">${t.cpLead}</div><div class="h2">${t.cpH}</div>
+      <p class="sub">${t.cpSub}</p>
+      <div class="cp-card">
+        <div class="cp-bar">
+          <div class="cp-fill"></div>
+          <div class="cp-tick" style="left:20%"></div>
+          <div class="cp-tick" style="left:40%"></div>
+          <div class="cp-tick off" style="left:60%"></div>
+        </div>
+        ${t.cpItems.map(c=>`<div class="cp-item"><span>${c[0]} ${c[1]}</span><span>${c[2]}</span></div>`).join("")}
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="lead">${t.worldLead}</div><div class="h2">${t.worldH}</div>
+      <p class="sub">${t.worldSub}</p>
+      <div class="themes">
+        ${t.themes.map(th=>`<div class="theme" style="background:${th[4]}"><div><div class="ico">${th[0]}</div><div class="cls">${th[1]}</div><div class="nm">${th[2]}</div></div><div class="ex">${th[3]}</div></div>`).join("")}
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="lead">${t.kidLead}</div><div class="h2">${t.kidH}</div>
+      <p class="sub">${t.kidSub}</p>
+      <div class="screen">
+        <div class="screen-title">${t.kidScreenTitle}</div><div class="screen-sub">${t.kidScreenSub}</div>
+        ${t.kidTasks.map(k=>`<div class="tk"><div class="tk-ico">${k[0]}</div><div class="tk-b"><div class="tk-t">${k[1]}</div><div class="tk-m"><span class="tk-chip${k[3]==='done'?' win':''}">${k[2]}</span>${k[4]?`<span class="tk-chip fire">${k[4]}</span>`:""}</div></div>${k[3]==='done'?'<div class="tk-done">✅</div>':`<div class="tk-btn">${k[5]}</div>`}</div>`).join("")}
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="lead">${t.famLead}</div><div class="h2">${t.famH}</div>
+      <p class="sub">${t.famSub}</p>
+      <div class="screen">
+        <div class="screen-title">${t.famTitle}</div><div class="screen-sub">${t.famSub2}</div>
+        <div class="ap">
+          <div class="ap-h"><div class="ap-av">🦁</div><div><b style="font-size:14px">${t.famName}</b> ${t.famTask}<div style="font-size:11px;color:var(--ink55)">${t.famWhen}</div></div></div>
+          <div class="ap-proof">${t.famProof}</div>
+          <div class="ap-acts"><div class="ap-no">${t.famNo}</div><div class="ap-ok">${t.famOk}</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="lead">${t.learnLead}</div><div class="h2">${t.learnH}</div>
+      <p class="sub">${t.learnSub}</p>
+      <div class="chat">
+        <div class="chat-head">${t.chatHead}</div>
+        ${t.chat.map(m=>`<div class="bubble ${m[0]}">${m[1]}</div>`).join("")}
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="lead">${t.motLead}</div><div class="h2">${t.motH}</div>
+      <p class="sub">${t.motSub}</p>
+      <div class="mot">
+        ${t.mot.map(m=>`<div class="mc"><div class="e">${m[0]}</div><h3>${m[1]}</h3><p>${m[2]}</p></div>`).join("")}
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="lead">${t.onbLead}</div><div class="h2">${t.onbH}</div>
+      <p class="sub">${t.onbSub}</p>
+      <div class="cine">
+        <div class="cine-badge">${t.cineBadge}</div>
+        <div class="cine-h">${t.cineH}</div>
+        <div style="color:#D7C9F2;font-size:14px;line-height:1.55">${t.cineTxt}</div>
+        <div style="margin-top:18px;font-size:12.5px;color:var(--ink55)">${t.cineSteps}</div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="lead">${t.taskLead}</div><div class="h2">${t.taskH}</div>
+      <p class="sub">${t.taskSub}</p>
+      <div class="pillrow">${t.pills.map(p=>`<span class="pill" style="background:rgba(255,255,255,.06);border-color:var(--line);color:var(--ink70)">${p}</span>`).join("")}</div>
+    </section>
+
+    <div class="trust">
+      <h2>${t.trustH}</h2>
+      <p style="color:var(--ink70);max-width:560px;margin:0 auto">${t.trustP}</p>
+      <div class="tpills">${t.tpills.map(p=>`<span class="pill">${p}</span>`).join("")}</div>
+    </div>
+
+    <div class="bottom"><a class="cta" href="/">${t.finalCta}</a></div>
+
+    <footer>
+      ${t.footTxt}
+      <div style="margin-top:10px">${t.legal.map(l=>`<a href="${l[0]}">${l[1]}</a>`).join("·")}</div>
+    </footer>
+  `;
+  initSlider();
+}
+
+function initSlider(){
+  const t=T[lang];
+  const slider=document.getElementById('slider'), silo=document.getElementById('silo'),
+        bar=document.getElementById('bar'), pctLabel=document.getElementById('pctLabel'),
+        glow=document.getElementById('glow'), revText=document.getElementById('revText');
+  function draw(pct){
+    const f=pct/100;
+    silo.style.filter=`brightness(${f.toFixed(2)}) blur(${(12*(1-f)).toFixed(1)}px) saturate(${(0.3+f).toFixed(2)})`;
+    bar.style.width=pct+"%"; pctLabel.textContent=(lang==="tr"?"%"+pct:pct+"%");
+    glow.style.opacity=(f*0.9+0.1).toFixed(2);
+    let m=t.miles[0][1]; for(const [k,v] of t.miles){ if(pct>=k) m=v; }
+    revText.textContent=m; revText.style.color = pct>=100 ? "var(--gold)" : "#fff";
+  }
+  slider.addEventListener('input',e=>draw(+e.target.value));
+  draw(+slider.value);
+}
+function setLang(l){ lang=l; render(); }
+render();
+</script>
 </body>
 </html>

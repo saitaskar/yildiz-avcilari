@@ -1,2 +1,6 @@
 # Gizli sistem (root) girisi: /admin -> /?admin (uygulama admin login modalini acar)
 /admin   /?admin   302
+
+# eski demo sayfasi tanitima birlestirildi (eski LinkedIn linki kirilmasin)
+/demo        /tanitim   301
+/demo.html   /tanitim   301

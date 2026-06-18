@@ -8,7 +8,7 @@
 
 Amaç: gerçek bir ödülü bedavadan vermek yerine, çocukların güzel alışkanlıklarla **hak etmesini** sağlamak, eğlenceli bir oyuna dönüştürmek.
 
-**🕹️ Canlı tanıtım:** [yildizavcilari.cryme.tr/demo.html](https://yildizavcilari.cryme.tr/demo.html) (TR/EN)
+**🕹️ Canlı tanıtım:** [yildizavcilari.com/tanitim](https://yildizavcilari.com/tanitim) (TR/EN)
 
 > "Vibe coding" ile yapıldı — baştan sona bir yapay zeka kodlama ajanıyla tasarlanıp yayına alındı.
 
@@ -54,7 +54,7 @@ Görev kataloğu kodda; kullanıcı verisi D1'de.
 yildiz-avcilari/
 ├── public/
 │   ├── index.html        # tüm uygulama (arayüz)
-│   └── demo.html          # çift dilli (TR/EN) tanıtım sayfası
+│   └── tanitim.html       # çift dilli (TR/EN) tanıtım / hakkında sayfası
 ├── functions/
 │   └── api/[[path]].js    # Pages Functions API (auth, görev, onay, AI sohbet, hediye)
 ├── backend/
