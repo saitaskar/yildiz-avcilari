@@ -19,6 +19,13 @@ Thumbs.db
 # scratch
 _check.js
 *.tmp
+_fe_check.js
+
+# GERCEK VERI / SIRLAR (public repo'ya GIRMEZ): prod backup'lari (isim+PIN) ve
+# tek-seferlik veri-bolme migration'i (gercek aile kodlari + soyadlari).
+# Kanonik (sanitize) sema backend/schema.sql'de tracked kalir.
+backend/backups/
+backend/migrations/
 
 # deploy ciktisi
 /dist/

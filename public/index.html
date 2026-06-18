@@ -265,11 +265,22 @@
     <p>Yıldızları topla, ödülü aç!</p>
   </div>
   <div class="wrap" style="padding-top:0;">
-    <div class="card">
-      <div class="role-grid">
+    <!-- AILE KODU GIRISI -->
+    <div class="card hidden" id="codeCard">
+      <h2 style="margin:2px 0 4px;text-align:center">Aileye giriş</h2>
+      <p class="sub" style="text-align:center;margin-bottom:14px">Aile kodunu gir. Kod yalnız bir kez gerekir, bu cihaz hatırlar.</p>
+      <input id="codeInput" placeholder="Aile kodu" maxlength="16" autocapitalize="characters" autocomplete="off" spellcheck="false"
+        style="width:100%;box-sizing:border-box;padding:14px;font-size:20px;text-align:center;letter-spacing:3px;text-transform:uppercase;border:2px solid var(--line);border-radius:14px;margin-bottom:6px;font-weight:800;color:var(--primary-dark)">
+      <div class="pin-err" id="codeErr"></div>
+      <button class="btn-primary" style="width:100%" onclick="submitCode()">Gir</button>
+      <button class="btn-ghost" style="width:100%;margin-top:10px" onclick="showRegisterSoon()">✨ Yeni aile oluştur</button>
+    </div>
+    <!-- UYE SECIMI -->
+    <div class="card hidden" id="memberCard">
+      <div id="familyHead"></div>
+      <div class="role-grid" id="roleGrid">
         <button class="role-btn active" data-role="child"><span class="ico">🧒</span>Çocuk</button>
-        <button class="role-btn" data-role="approver"><span class="ico">👨‍👩‍👧</span>Onaylayıcı</button>
-        <button class="role-btn" data-role="admin"><span class="ico">⭐</span>Yönetici</button>
+        <button class="role-btn" data-role="approver"><span class="ico">👨‍👩‍👧</span>Ebeveyn</button>
       </div>
       <div class="name-list" id="nameList"></div>
       <div class="pin-box hidden" id="pinBox">
@@ -278,6 +289,7 @@
         <div class="pin-err" id="pinErr"></div>
         <div class="keypad" id="keypad"></div>
       </div>
+      <button class="btn-ghost" style="width:100%;margin-top:12px" onclick="changeFamily()">↩︎ Başka aile / kodu değiştir</button>
     </div>
   </div>
 </div>
@@ -496,6 +508,8 @@ const PRIZE_LABEL = {switch:"Nintendo Switch Lite 🎉"};
 const API = "/api";
 let authToken = null;     // login sonrasi HMAC token (bellekte; her acilista login)
 let loginUsers = [];      // login ekrani icin (PIN'siz isim listesi)
+let familyCtx = null;     // {kind:'family'|'root', family:{id,name}|null, members:[...]} - aile kodu cozuldukten sonra
+const FAMILY_CODE_KEY = "gp_family_code";   // cihaz hatirlar
 let state = {season:null, users:[], completions:[], customTasks:[], checkpoints:[], chatLogs:[]};
 let session = null;       // current user object
 let pinDraft = "";
@@ -514,8 +528,9 @@ async function api(path, opts={}){
 }
 async function refreshState(){
   const d = await api("/state");
-  state = { season:d.season, users:d.users, completions:d.completions, customTasks:d.customTasks||[], checkpoints:d.checkpoints||[], chatLogs:d.chatLogs||[] };
-  const me = d.users.find(u=>u.id===session.id); if(me) session = me;  // tema vb. guncel
+  if(d.root){ state = { root:true, stats:d.stats||{}, families:d.families||[], chatLogs:d.chatLogs||[] }; if(d.me) session=d.me; return; }
+  state = { season:d.season, users:d.users||[], completions:d.completions||[], customTasks:d.customTasks||[], checkpoints:d.checkpoints||[], chatLogs:d.chatLogs||[], rewards:d.rewards||[], family:d.family||null };
+  const me = (d.users||[]).find(u=>u.id===session.id); if(me) session = me;  // tema vb. guncel
 }
 function user(id){ return state.users.find(u=>u.id===id); }
 
@@ -674,6 +689,73 @@ function pendingForApprover(appr){
 }
 
 /* ======================= LOGIN UI ======================= */
+function escapeHtml(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function timeAgo(ts){
+  if(!ts) return ""; const d=Math.floor((Date.now()-ts)/1000);
+  if(d<60) return "az önce"; if(d<3600) return Math.floor(d/60)+" dk önce";
+  if(d<86400) return Math.floor(d/3600)+" sa önce"; if(d<604800) return Math.floor(d/86400)+" gün önce";
+  return new Date(ts).toLocaleDateString("tr-TR");
+}
+
+/* ---- aile kodu akisi (cok-aileli giris) ---- */
+function showCodeEntry(){
+  document.getElementById("brandTitle").textContent = APP_NAME;
+  document.getElementById("codeCard").classList.remove("hidden");
+  document.getElementById("memberCard").classList.add("hidden");
+  const err=document.getElementById("codeErr"); if(err) err.textContent="";
+  const inp=document.getElementById("codeInput");
+  if(inp){ inp.value=""; inp.onkeydown=(ev)=>{ if(ev.key==="Enter"){ ev.preventDefault(); submitCode(); } }; setTimeout(()=>{ try{inp.focus();}catch(e){} }, 120); }
+}
+async function submitCode(preset){
+  const inp=document.getElementById("codeInput");
+  const code = String(preset || (inp?inp.value:"") || "").trim().toUpperCase();
+  const err=document.getElementById("codeErr");
+  if(!code){ if(err) err.textContent="Kodu gir"; return; }
+  if(err && !preset) err.textContent="Kontrol ediliyor...";
+  try{
+    const d = await api("/lookup", {method:"POST", body:{code}});
+    familyCtx = d;
+    loginUsers = d.members || [];
+    loginRole = (d.kind==="root") ? "root" : "child";
+    pinTarget=null; pinDraft="";
+    localStorage.setItem(FAMILY_CODE_KEY, code);
+    renderMembers();
+  }catch(e){
+    localStorage.removeItem(FAMILY_CODE_KEY);
+    if(preset){ showCodeEntry(); }
+    const e2=document.getElementById("codeErr"); if(e2) e2.textContent="Kod bulunamadı, tekrar dene";
+  }
+}
+function changeFamily(){
+  localStorage.removeItem(FAMILY_CODE_KEY);
+  familyCtx=null; loginUsers=[]; pinTarget=null; pinDraft="";
+  showCodeEntry();
+}
+function showRegisterSoon(){
+  showModal(`<div style="text-align:center">
+    <div style="font-size:44px">✨</div>
+    <h3 style="margin:8px 0 2px">Yeni aile oluşturma çok yakında</h3>
+    <div class="sub" style="margin:10px 0">Şu an aileler davet kodu ile katılıyor. Kendi aileni kurmak istersen kod alabilirsin.</div>
+    <button class="btn-primary" style="width:100%" onclick="closeModal()">Tamam</button></div>`);
+}
+function renderMembers(){
+  document.getElementById("codeCard").classList.add("hidden");
+  document.getElementById("memberCard").classList.remove("hidden");
+  const head=document.getElementById("familyHead");
+  const roleGrid=document.getElementById("roleGrid");
+  if(familyCtx && familyCtx.kind==="root"){
+    head.innerHTML = `<div style="text-align:center;margin-bottom:6px"><div style="font-size:30px">🛡️</div><div style="font-weight:800;color:var(--primary-dark)">Sistem Yönetimi</div></div>`;
+    roleGrid.classList.add("hidden");
+    loginRole="root";
+  }else{
+    const fname = (familyCtx && familyCtx.family) ? familyCtx.family.name : "Aile";
+    head.innerHTML = `<div style="text-align:center;margin-bottom:12px"><div style="font-size:12px;color:var(--muted);letter-spacing:1px">AİLE</div><div style="font-weight:800;font-size:19px;color:var(--primary-dark)">${escapeHtml(fname)}</div></div>`;
+    roleGrid.classList.remove("hidden");
+    if(loginRole!=="child" && loginRole!=="approver") loginRole="child";
+  }
+  renderLogin();
+}
+
 function renderLogin(){
   document.getElementById("brandTitle").textContent = APP_NAME;
   document.querySelectorAll(".role-btn").forEach(b=>{
@@ -684,8 +766,8 @@ function renderLogin(){
   const people = loginUsers.filter(u=>u.role===loginRole);
   list.innerHTML = people.map(u=>`
     <div class="name-item ${pinTarget&&pinTarget.id===u.id?'active':''}" onclick="pickUser('${u.id}')">
-      <div class="av">${u.av}</div>
-      <div>${u.name}<small>${u.role==='child'?'Yıldız Avcısı':''}</small></div>
+      <div class="av">${escapeHtml(u.av)}</div>
+      <div>${escapeHtml(u.name)}<small>${u.role==='child'?'Yıldız Avcısı':''}</small></div>
     </div>`).join("");
   document.getElementById("pinBox").classList.toggle("hidden", !pinTarget);
   if(pinTarget){
@@ -703,7 +785,8 @@ async function quickLogin(id){
   try{
     const d = await api("/state");          // token gecerliyse me doner
     session = d.me;
-    state = { season:d.season, users:d.users, completions:d.completions, customTasks:d.customTasks||[], checkpoints:d.checkpoints||[], chatLogs:d.chatLogs||[] };
+    if(d.root){ state = { root:true, stats:d.stats||{}, families:d.families||[], chatLogs:d.chatLogs||[] }; }
+    else { state = { season:d.season, users:d.users||[], completions:d.completions||[], customTasks:d.customTasks||[], checkpoints:d.checkpoints||[], chatLogs:d.chatLogs||[], rewards:d.rewards||[], family:d.family||null }; }
     saveToken(id, authToken);               // suresini tazele
     enterApp();
   }catch(e){
@@ -756,11 +839,11 @@ function enterApp(){
   if(session.role==="child" && !session.theme){ startWizard(); return; }
   document.getElementById("appView").classList.remove("hidden");
   document.getElementById("brandTop").textContent = APP_NAME;
-  document.getElementById("whoLabel").innerHTML = `${session.av} <b>${session.name}</b>`;
+  document.getElementById("whoLabel").innerHTML = `${escapeHtml(session.av)} <b>${escapeHtml(session.name)}</b>`;
   if(session.role==="child") applyTheme(themeOf(session)); else resetTheme();
   renderApp();
   startAutoRefresh();
-  setTimeout(showAnnouncements, 500);
+  if(!session.isRoot && session.role!=="root") setTimeout(showAnnouncements, 500);   // root: duyuru yok
   if(session.role==="child"){ setTimeout(checkCheckpointCelebration, 1100); setTimeout(showApprovalReminder, 1700); setTimeout(showWeeklyReminder, 2300); }
 }
 function logout(){ stopAutoRefresh(); if(session) clearSavedToken(session.id); resetTheme(); session=null; authToken=null; pinTarget=null; pinDraft=""; document.getElementById("wizardMount").innerHTML=""; document.getElementById("appBody").innerHTML=""; document.getElementById("appView").classList.add("hidden"); document.getElementById("loginView").classList.remove("hidden"); renderLogin(); }
@@ -795,7 +878,7 @@ function wizIntro(){
     <div class="cine">
       <div class="badge">BÜYÜK KARNE SEZONU</div>
       <h1>Hedefe giden yolda<br>kaderini seç...</h1>
-      <p>Karatahtada gizemli bir siluet beliriyor. Onu açığa çıkarmak senin elinde, ${session.name}. Görevleri tamamla, gücünü topla, ödülü hak et.</p>
+      <p>Karatahtada gizemli bir siluet beliriyor. Onu açığa çıkarmak senin elinde, ${escapeHtml(session.name)}. Görevleri tamamla, gücünü topla, ödülü hak et.</p>
       <button class="btn-cine" onclick="wizClasses()">Maceraya Başla <span class="blink">▸</span></button>
     </div>`, true);
 }
@@ -846,9 +929,9 @@ async function wizFinish(){
 /* cocuk sonradan tema degistirir */
 function changeTheme(){ document.getElementById("appView").classList.add("hidden"); wizStep=0; wizClasses(); }
 function renderApp(){
-  if(session.role==="child") renderChild();
-  else if(session.role==="approver") renderApprover();
-  else renderAdmin();
+  if(session.isRoot || session.role==="root") renderRoot();
+  else if(session.role==="child") renderChild();
+  else renderApprover();
   updateNotifBadge();
 }
 function updateNotifBadge(){
@@ -881,12 +964,12 @@ function renderChild(){
   const cpMarks = myCps.map(c=>{
     const left = Math.min(100, c.threshold/state.season.goal*100);
     const on = (c.status==='reached'||c.status==='given');
-    return `<div class="cp-tick ${on?'on':''}" style="left:${left}%"></div><div class="cp-mark ${on?'on':''}" style="left:${left}%" title="${c.reward}">🎯</div>`;
+    return `<div class="cp-tick ${on?'on':''}" style="left:${left}%"></div><div class="cp-mark ${on?'on':''}" style="left:${left}%" title="${escapeHtml(c.reward)}">🎯</div>`;
   }).join("");
   const cpList = myCps.length ? `<div class="cp-list">${myCps.map(c=>{
     const reached=(c.status==='reached'||c.status==='given');
     const ic = c.status==='given'?'✅':(reached?'🎉':'🔒');
-    return `<div class="cp-item ${reached?'on':''}"><span>${ic} ${c.threshold} ⭐</span><span>${c.reward}</span></div>`;
+    return `<div class="cp-item ${reached?'on':''}"><span>${ic} ${c.threshold} ⭐</span><span>${escapeHtml(c.reward)}</span></div>`;
   }).join("")}</div>` : "";
 
   body.innerHTML = `
@@ -992,9 +1075,9 @@ function leaderboardHTML(highlight){
     ${kids.map((k,i)=>`
       <div class="lb-row">
         <div class="lb-rank ${i===0?'gold':''}">${i===0?'🥇':(i+1)}</div>
-        <div class="lb-av">${k.u.av}</div>
+        <div class="lb-av">${escapeHtml(k.u.av)}</div>
         <div class="lb-body">
-          <b>${k.u.name}</b>${highlight.includes(k.u.id)?' <span style="color:var(--primary);font-size:12px">●</span>':''}
+          <b>${escapeHtml(k.u.name)}</b>${highlight.includes(k.u.id)?' <span style="color:var(--primary);font-size:12px">●</span>':''}
           <div class="lb-mini"><span style="width:${Math.min(100,k.xp/state.season.goal*100)}%"></span></div>
         </div>
         <div class="lb-xp">${k.xp}</div>
@@ -1200,7 +1283,7 @@ function checkCheckpointCelebration(){
       <div style="font-size:58px;animation:bob 1.2s ease-in-out infinite">🎯</div>
       <h3 style="margin:10px 0 2px">Ara ödülünü kazandın! 🎉</h3>
       <div class="msub">${c.threshold} ⭐'a ulaştın</div>
-      <div class="ai-note" style="text-align:center;margin:14px 0;font-size:16px;font-weight:700">🎁 ${c.reward}</div>
+      <div class="ai-note" style="text-align:center;margin:14px 0;font-size:16px;font-weight:700">🎁 ${escapeHtml(c.reward)}</div>
       <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Aileden ödülünü iste!</div>
       <button class="btn-primary" style="width:100%" onclick="closeModal()">Yaşasın! 🥳</button>
     </div>`);
@@ -1299,8 +1382,8 @@ function renderChatMsgs(){
   const c=document.getElementById("chatMsgs"); if(!c) return;
   const ico = chatBot().ico;
   c.innerHTML = chatMessages.map(m=> m.role==="assistant"
-    ? `<div class="chat-bubble bot">${ico} ${m.content}</div>`
-    : `<div class="chat-bubble me">${m.content}</div>`).join("")
+    ? `<div class="chat-bubble bot">${ico} ${escapeHtml(m.content)}</div>`
+    : `<div class="chat-bubble me">${escapeHtml(m.content)}</div>`).join("")
     + (chatBusy?`<div class="chat-bubble bot">${ico} <i>yazıyor...</i></div>`:"");
   c.scrollTop = c.scrollHeight;
 }
@@ -1335,16 +1418,33 @@ async function sendChat(){
 }
 
 /* ======================= APPROVER VIEW ======================= */
+function familyCodeCard(){
+  const code = state.family && state.family.code;
+  if(!code) return "";
+  return `<div class="card">
+    <h2>🔑 Aile kodu</h2>
+    <div class="sub">Çocuğun (ya da diğer ebeveynin) cihazından girişte bu kod bir kez girilir, sonra cihaz hatırlar.</div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="flex:1;text-align:center;font-size:24px;font-weight:800;letter-spacing:4px;color:var(--primary-dark);background:var(--line);border-radius:12px;padding:12px">${escapeHtml(code)}</div>
+      <button class="btn-ghost" style="flex:0 0 auto;padding:12px 14px" onclick="copyFamilyCode('${escapeHtml(code)}')">📋 Kopyala</button>
+    </div>
+  </div>`;
+}
+function copyFamilyCode(code){
+  try{ navigator.clipboard.writeText(code).then(()=>toast("Kod kopyalandı 📋"), ()=>toast(code)); }
+  catch(e){ toast(code); }
+}
 function renderApprover(){
   const body=document.getElementById("appBody");
   const pend = pendingForApprover(session);
   body.innerHTML = `
     <div class="card">
       <h2>Onay Bekleyenler</h2>
-      <div class="sub">${session.title} olarak ${session.kids.map(k=>user(k).name).join(", ")} için onay veriyorsun.</div>
+      <div class="sub">${escapeHtml(session.title)} olarak ${session.kids.map(k=>{const x=user(k);return escapeHtml(x?x.name:k);}).join(", ")} için onay veriyorsun.</div>
       ${pend.length? pend.map(approveCard).join("") : `<div class="empty"><span class="e">🎉</span>Bekleyen onay yok. Hepsi temiz!</div>`}
       ${notifBtnHTML()}
     </div>
+    ${familyCodeCard()}
     ${leaderboardHTML(session.kids)}
     <div class="card">
       <h2>🎯 Ara ödüller</h2>
@@ -1368,14 +1468,14 @@ function checkpointListFor(kidIds){
     const ch=user(c.childId);
     if(c.status==="reached"){
       return `<div class="task waiting" style="margin-bottom:8px"><div class="t-ico">🎉</div>
-        <div class="t-body"><div class="t-title">${c.reward}</div>
+        <div class="t-body"><div class="t-title">${escapeHtml(c.reward)}</div>
           <div class="t-meta"><span class="chip pending">${ch?ch.name:''} · ${c.threshold} ⭐'a ulaştı!</span></div></div>
         <button class="btn-ok" style="flex:0 0 auto;padding:9px 14px" onclick="checkpointGiven('${c.id}')">Verildi ✓</button></div>`;
     }
     const ic = c.status==="given"?"✅":"🎯";
     const note = c.status==="given"?"verildi":`hedef ${c.threshold} ⭐`;
     return `<div class="task" style="margin-bottom:8px${c.status==='given'?';opacity:.6':''}"><div class="t-ico">${ic}</div>
-      <div class="t-body"><div class="t-title">${c.reward}</div>
+      <div class="t-body"><div class="t-title">${escapeHtml(c.reward)}</div>
         <div class="t-meta"><span class="chip">${ch?ch.name:''}</span><span class="chip count">${note}</span></div></div>
       ${c.status==="pending"?`<button class="btn-do" style="background:#fff;border:2px solid var(--red);color:var(--red)" onclick="checkpointCancel('${c.id}')">İptal</button>`:''}</div>`;
   }).join("");
@@ -1417,8 +1517,8 @@ function chatLogsCard(){
     ${logs.length ? logs.map(l=>{
       const ch=user(l.childId);
       const d=new Date(l.ts).toLocaleString("tr-TR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
-      return `<div class="task" style="margin-bottom:8px"><div class="t-ico">${ch?ch.av:'💬'}</div>
-        <div class="t-body"><div class="t-title">${ch?ch.name:l.childId}</div>
+      return `<div class="task" style="margin-bottom:8px"><div class="t-ico">${ch?escapeHtml(ch.av):'💬'}</div>
+        <div class="t-body"><div class="t-title">${ch?escapeHtml(ch.name):escapeHtml(l.childId)}</div>
           <div class="t-meta"><span class="chip ${l.result==='pass'?'done':'pending'}">${l.result==='pass'?'✓ geçti':'yetersiz'}</span><span class="chip">${d}</span></div></div>
         <button class="btn-do" onclick="showChatLog('${l.id}')">Gör</button></div>`;
     }).join("") : `<div class="empty"><span class="e">💬</span>Henüz öğrenme sohbeti yok.</div>`}
@@ -1428,10 +1528,10 @@ function showChatLog(id){
   const l=(state.chatLogs||[]).find(x=>x.id===id); if(!l) return;
   const ch=user(l.childId);
   const bub=(l.messages||[]).map(m=> m.role==="assistant"
-    ? `<div class="chat-bubble bot">🤖 ${m.content}</div>`
-    : `<div class="chat-bubble me">${m.content}</div>`).join("");
+    ? `<div class="chat-bubble bot">🤖 ${escapeHtml(m.content)}</div>`
+    : `<div class="chat-bubble me">${escapeHtml(m.content)}</div>`).join("");
   showModal(`
-    <h3>💬 ${ch?ch.name:''}</h3>
+    <h3>💬 ${ch?escapeHtml(ch.name):''}</h3>
     <div class="msub">${l.result==='pass'?'✓ Bot geçerli buldu':'Bot yetersiz buldu'} · ${new Date(l.ts).toLocaleString("tr-TR")}</div>
     <div class="chat-msgs" style="max-height:55vh">${bub}</div>
     <button class="btn-primary" style="width:100%;margin-top:10px" onclick="closeModal()">Kapat</button>
@@ -1444,7 +1544,7 @@ function activeCustomFor(kidIds){
     const ch=user(c.childId);
     return `<div class="task" style="margin-bottom:8px">
       <div class="t-ico">${c.emoji}</div>
-      <div class="t-body"><div class="t-title">${c.title}</div>
+      <div class="t-body"><div class="t-title">${escapeHtml(c.title)}</div>
         <div class="t-meta"><span class="chip xp">+${c.xp} ⭐</span><span class="chip">${ch?ch.name:''}</span></div></div>
       <button class="btn-do" style="background:#fff;border:2px solid var(--red);color:var(--red)" onclick="cancelCustomTask('${c.id}')">İptal</button>
     </div>`;
@@ -1501,17 +1601,17 @@ async function cancelCustomTask(id){
 function approveCard(c){
   const child=user(c.userId); const task=taskById(c.taskId) || {emoji:"⭐",title:"Görev",xp:0};
   let proofHTML="";
-  if(c.proof.text) proofHTML+=`<div class="proof-box">"${c.proof.text}"</div>`;
+  if(c.proof.text) proofHTML+=`<div class="proof-box">"${escapeHtml(c.proof.text)}"</div>`;
   if(c.proof.photoKey) proofHTML+=`<div class="proof-box">📷 Fotoğraf:<img src="/api/proof/${c.proof.photoKey}?t=${encodeURIComponent(authToken)}" loading="lazy"></div>`;
   if(!c.proof.text && !c.proof.photoKey) proofHTML=`<div class="proof-box" style="color:var(--muted)">Kanıt yok, çocuk yaptığını bildirdi.</div>`;
   let aiHTML="";
-  if(c.aiNote) aiHTML=`<div class="ai-note">🤖 Akıllı yardımcı: ${c.aiNote.note} ${c.aiNote.ok?'✓':'⚠️'}</div>`;
+  if(c.aiNote) aiHTML=`<div class="ai-note">🤖 Akıllı yardımcı: ${escapeHtml(c.aiNote.note)} ${c.aiNote.ok?'✓':'⚠️'}</div>`;
   const when=new Date(c.ts).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"});
   return `
     <div class="approve-card">
       <div class="approve-head">
-        <div class="av">${child.av}</div>
-        <div><b>${child.name}</b> · ${task.emoji} ${task.title}
+        <div class="av">${escapeHtml(child.av)}</div>
+        <div><b>${escapeHtml(child.name)}</b> · ${task.emoji} ${escapeHtml(task.title)}
           <small>${when} · +${task.xp} XP</small></div>
       </div>
       ${proofHTML}${aiHTML}
@@ -1524,8 +1624,8 @@ function approveCard(c){
 function kidStatusRow(kid){
   const u=user(kid); const xp=userXP(kid); const pct=Math.min(100,Math.round(xp/state.season.goal*100));
   return `<div class="lb-row">
-    <div class="lb-av">${u.av}</div>
-    <div class="lb-body"><b>${u.name}</b>
+    <div class="lb-av">${escapeHtml(u.av)}</div>
+    <div class="lb-body"><b>${escapeHtml(u.name)}</b>
       <div class="lb-mini"><span style="width:${pct}%"></span></div></div>
     <div class="lb-xp">${xp}<br><small style="color:var(--muted);font-weight:500">%${pct}</small></div>
   </div>`;
@@ -1539,7 +1639,62 @@ async function decide(compId, status){
   }catch(e){ toast("Hata: "+e.message); }
 }
 
-/* ======================= ADMIN VIEW ======================= */
+/* ======================= ROOT ADMIN VIEW (anonim, GDPR/KVKK) ======================= */
+function rootStat(label, val){
+  return `<div style="flex:1 1 28%;min-width:92px;text-align:center;background:var(--line);border-radius:14px;padding:14px 6px">
+    <div style="font-size:26px;font-weight:800;color:var(--primary-dark)">${val||0}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:2px">${label}</div></div>`;
+}
+function rootChatRow(l){
+  const pass = l.result==="pass";
+  const preview = (l.messages||[]).filter(m=>m.role==="user").map(m=>m.content).join(" · ").slice(0,84);
+  return `<div class="lb-row" onclick="showRootChat('${l.id}')" style="cursor:pointer">
+    <div class="lb-av">${pass?'✅':'📝'}</div>
+    <div class="lb-body"><b>${escapeHtml(l.child)} · ${escapeHtml(l.family)}</b>
+      <div style="font-size:12px;color:var(--muted)">${escapeHtml(preview)||'(boş)'}</div></div>
+    <div class="lb-xp" style="font-size:11px;color:var(--muted)">${timeAgo(l.ts)}</div></div>`;
+}
+function showRootChat(id){
+  const l=(state.chatLogs||[]).find(x=>x.id===id); if(!l) return;
+  const body=(l.messages||[]).map(m=>`<div style="margin:6px 0;padding:9px 12px;border-radius:11px;background:${m.role==='user'?'var(--line)':'#F3ECFF'}">
+    <b style="font-size:11px;color:var(--muted)">${m.role==='user'?'Çocuk':'Rehber'}</b>
+    <div style="font-size:14px;line-height:1.4">${escapeHtml(m.content)}</div></div>`).join("");
+  showModal(`<div><div style="font-weight:800;margin-bottom:2px">${escapeHtml(l.child)} · ${escapeHtml(l.family)}</div>
+    <div class="sub" style="margin-bottom:10px">Sonuç: ${l.result==='pass'?'✅ geçti':'📝 devam / yetersiz'}</div>
+    ${body}<button class="btn-primary" style="width:100%;margin-top:10px" onclick="closeModal()">Kapat</button></div>`);
+}
+function renderRoot(){
+  const body=document.getElementById("appBody");
+  const s = state.stats||{};
+  const fams = state.families||[];
+  const logs = state.chatLogs||[];
+  const passRate = s.chats ? Math.round((s.chatPass||0)/s.chats*100) : 0;
+  body.innerHTML = `
+    <div class="card">
+      <h2>🛡️ Sistem Yönetimi <span style="font-size:12px;color:var(--muted);font-weight:600">· root · anonim</span></h2>
+      <div class="sub">Gizlilik (GDPR/KVKK): aile adları ve çocuk kimlikleri görünmez. Yalnız toplam sayılar ve anonim sohbet denetimi.</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+        ${rootStat("Aile", s.families)}
+        ${rootStat("Çocuk", s.children)}
+        ${rootStat("Ebeveyn", s.parents)}
+        ${rootStat("Görev kaydı", s.comps)}
+        ${rootStat("Onay bekleyen", s.pending)}
+        ${rootStat("Öğrenme sohbeti", s.chats)}
+      </div>
+    </div>
+    <div class="card">
+      <h2>🏠 Aileler <span style="font-size:12px;color:var(--muted);font-weight:600">(anonim)</span></h2>
+      ${fams.length ? fams.map(f=>`<div class="kv"><span>Aile #${escapeHtml(f.id)}</span><b>${f.children} çocuk · ${f.comps} görev${f.lastTs?' · '+timeAgo(f.lastTs):''}</b></div>`).join("") : '<div class="empty"><span class="e">🏠</span>Henüz aile yok</div>'}
+    </div>
+    <div class="card">
+      <h2>🔬 Bot sohbet denetimi <span style="font-size:12px;color:var(--muted);font-weight:600">· son ${logs.length}</span></h2>
+      <div class="sub">AI rehberin çocuklarla yazışmaları, kimlik olmadan (güvenlik/kalite denetimi). Geçme oranı: <b>%${passRate}</b></div>
+      ${logs.length ? logs.map(rootChatRow).join("") : '<div class="empty"><span class="e">💬</span>Henüz sohbet kaydı yok</div>'}
+    </div>
+  `;
+}
+
+/* ======================= ADMIN VIEW (kullanim disi: aile admini Faz B'de owner olacak) ======================= */
 function renderAdmin(){
   const body=document.getElementById("appBody");
   const totalComps=state.completions.length;
@@ -1573,7 +1728,7 @@ function renderAdmin(){
         });
         const cp=(state.checkpoints||[]).filter(c=>c.status==="reached"||c.status==="given").sort((a,b)=>(b.reachedTs||0)-(a.reachedTs||0)).map(c=>{
           const u=user(c.childId);
-          return `<div class="lb-row"><div class="lb-av">${u?u.av:'🎯'}</div><div class="lb-body"><b>${u?u.name:c.childId}</b><div style="font-size:12px;color:var(--muted)">🎯 ${c.reward} · ${c.threshold} ⭐ ${c.status==='given'?'· ✓ verildi':'· 🎁 verilecek'}</div></div></div>`;
+          return `<div class="lb-row"><div class="lb-av">${u?u.av:'🎯'}</div><div class="lb-body"><b>${u?u.name:c.childId}</b><div style="font-size:12px;color:var(--muted)">🎯 ${escapeHtml(c.reward)} · ${c.threshold} ⭐ ${c.status==='given'?'· ✓ verildi':'· 🎁 verilecek'}</div></div></div>`;
         });
         const all=big.concat(cp);
         return all.length ? all.join("") : `<div class="empty"><span class="e">🎁</span>Henüz hediye kazanan yok. İlk kim olacak?</div>`;
@@ -1681,10 +1836,10 @@ async function enablePush(){
 /* ======================= BOOT ======================= */
 async function boot(){
   registerSW();
-  const dev = location.search.indexOf("dev")>=0;   // ?dev ile gizli (test) kullanicilar da gorunur
-  try{ const d = await api("/users"+(dev?"?dev":"")); loginUsers = d.users || []; }
-  catch(e){ loginUsers = []; toast("Sunucuya bağlanılamadı"); }
-  renderLogin();
+  document.getElementById("brandTitle").textContent = APP_NAME;
+  const code = localStorage.getItem(FAMILY_CODE_KEY);
+  if(code){ await submitCode(code); }   // cihaz aileyi hatirliyor: dogrudan uye secimine
+  else { showCodeEntry(); }              // yeni cihaz: aile kodu iste
 }
 boot();
 </script>
