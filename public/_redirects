@@ -1,0 +1,2 @@
+# Gizli sistem (root) girisi: /admin -> /?admin (uygulama admin login modalini acar)
+/admin   /?admin   302

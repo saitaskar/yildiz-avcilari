@@ -277,10 +277,19 @@
         style="width:100%;box-sizing:border-box;padding:13px;font-size:15px;border:2px solid var(--line);border-radius:12px;margin-bottom:10px">
       <input id="authPass" type="password" placeholder="Parola" autocomplete="current-password"
         style="width:100%;box-sizing:border-box;padding:13px;font-size:15px;border:2px solid var(--line);border-radius:12px;margin-bottom:6px">
+      <label id="consentRow" class="hidden" style="display:flex;gap:9px;align-items:flex-start;margin:10px 2px 4px;font-size:12.5px;color:var(--muted);cursor:pointer">
+        <input type="checkbox" id="authConsent" style="margin-top:3px;flex:0 0 auto;width:16px;height:16px">
+        <span><a href="/kosullar.html" target="_blank">Kullanım Koşulları</a> ve <a href="/gizlilik.html" target="_blank">Gizlilik Politikası</a>'nı okudum ve kabul ediyorum. Çocuk profilleri için <b>veli rızasını</b> ben veriyorum.</span>
+      </label>
       <div class="pin-err" id="authErr"></div>
       <button class="btn-primary" style="width:100%" id="authSubmit" onclick="submitAuth()">Giriş yap</button>
       <button class="btn-ghost hidden" id="authEmailCodeBtn" style="width:100%;margin-top:10px" onclick="startEmailCode()">✉️ Parola yerine e-postama kod gönder</button>
-      <div style="text-align:center;margin-top:14px"><span onclick="rootLoginPrompt()" style="font-size:11px;color:var(--muted);cursor:pointer">sistem yönetimi</span></div>
+      <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--line);text-align:center;font-size:11px;color:var(--muted);line-height:1.9">
+        <a href="/tanitim.html" style="color:var(--muted)">Hakkında</a> ·
+        <a href="/gizlilik.html" style="color:var(--muted)">Gizlilik</a> ·
+        <a href="/kosullar.html" style="color:var(--muted)">Koşullar</a> ·
+        <a href="/cocuk-guvenligi.html" style="color:var(--muted)">Çocuk Güvenliği</a>
+      </div>
     </div>
   </div>
 </div>
@@ -737,6 +746,7 @@ function setAuthTab(t){
   document.getElementById("tabLogin").classList.toggle("active", t==="login");
   document.getElementById("tabSignup").classList.toggle("active", t==="signup");
   document.getElementById("authName").classList.toggle("hidden", t!=="signup");
+  document.getElementById("consentRow").classList.toggle("hidden", t!=="signup");   // rıza yalniz kayitta
   document.getElementById("authPass").setAttribute("autocomplete", t==="signup"?"new-password":"current-password");
   document.getElementById("authSubmit").textContent = t==="signup"?"Kayıt ol":"Giriş yap";
   document.getElementById("authErr").textContent="";
@@ -752,6 +762,7 @@ async function submitAuth(){
   const name=document.getElementById("authName").value.trim();
   const err=document.getElementById("authErr"); err.textContent="";
   if(!email||!pass){ err.textContent="E-posta ve parola gir"; return; }
+  if(authTab==="signup" && !document.getElementById("authConsent").checked){ err.textContent="Devam etmek için Koşullar ve Gizlilik'i kabul et"; return; }
   err.textContent="Lütfen bekle...";
   try{
     const d = await api(authTab==="signup"?"/auth/register":"/auth/login", {method:"POST", body:{email, password:pass, name}});
@@ -1996,7 +2007,9 @@ async function boot(){
   registerSW();
   document.getElementById("brandTitle").textContent = APP_NAME;
   await loadConfig();
-  pendingInvite = new URLSearchParams(location.search).get("invite");   // ?invite=... davet linki
+  const params = new URLSearchParams(location.search);
+  if(params.has("admin")){ setAuthTab("login"); setTimeout(rootLoginPrompt, 300); return; }   // gizli sistem girisi (/admin)
+  pendingInvite = params.get("invite");   // ?invite=... davet linki
   const t = localStorage.getItem(ACC_TOKEN_KEY);
   if(t){
     authToken = t;
