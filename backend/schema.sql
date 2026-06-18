@@ -16,6 +16,7 @@ DROP TABLE IF EXISTS accounts;
 DROP TABLE IF EXISTS account_families;
 DROP TABLE IF EXISTS family_invites;
 DROP TABLE IF EXISTS email_codes;
+DROP TABLE IF EXISTS feedback;
 
 -- ===================== ACCOUNTS (yetiskin kimligi: Google / email+parola / email-kod) =====================
 CREATE TABLE accounts (
@@ -192,3 +193,19 @@ CREATE TABLE push_subs (
 );
 CREATE UNIQUE INDEX idx_push_endpoint ON push_subs(endpoint);
 CREATE INDEX idx_push_user ON push_subs(user_id);
+
+-- Geri bildirim (aile + cocuk ayri; root anonim gorur)
+CREATE TABLE feedback (
+  id        TEXT PRIMARY KEY,
+  family_id TEXT,
+  kind      TEXT NOT NULL,        -- child | parent
+  ref_id    TEXT,                 -- child_id veya account_id
+  theme     TEXT,                 -- cocuk RPG temasi
+  type      TEXT NOT NULL,        -- rating | suggestion | bug | other
+  rating    INTEGER,              -- 1-5
+  message   TEXT,
+  contact   TEXT,                 -- ebeveyn iletisim e-postasi (gonullu)
+  ts        INTEGER NOT NULL
+);
+CREATE INDEX idx_feedback_ts   ON feedback(ts);
+CREATE INDEX idx_feedback_kind ON feedback(kind);

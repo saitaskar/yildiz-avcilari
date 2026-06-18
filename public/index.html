@@ -226,6 +226,7 @@
   .bot-stage{max-width:460px;width:100%;animation:fadeUp .5s ease;}
   .bot-avatar{font-size:72px;margin-bottom:6px;animation:bob 2.4s ease-in-out infinite;}
   @keyframes bob{50%{transform:translateY(-10px);}}
+  @keyframes fbpop{from{transform:scale(.4) translateY(24px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
   .bot-name{font-weight:800;font-size:15px;letter-spacing:1px;margin-bottom:14px;}
   .bot-bubble{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:18px;padding:18px 20px;font-size:15px;line-height:1.6;color:#EAF0FF;min-height:90px;text-align:left;}
   .bot-dots{display:flex;justify-content:center;gap:8px;margin:18px 0;}
@@ -624,7 +625,7 @@ async function refreshState(){
     return;
   }
   const d = await api("/state");   // cocuk veya root token'i
-  if(d.root){ state = { root:true, stats:d.stats||{}, families:d.families||[], chatLogs:d.chatLogs||[] }; if(d.me) session=d.me; return; }
+  if(d.root){ state = { root:true, stats:d.stats||{}, families:d.families||[], chatLogs:d.chatLogs||[], feedback:d.feedback||[] }; if(d.me) session=d.me; return; }
   state = { season:d.season, users:d.users||[], completions:d.completions||[], customTasks:d.customTasks||[], checkpoints:d.checkpoints||[], chatLogs:d.chatLogs||[], rewards:d.rewards||[], family:d.family||null };
   const me = (d.users||[]).find(u=>u.id===session.id); if(me) session = me;  // tema vb. guncel
 }
@@ -929,7 +930,7 @@ async function rootLogin(){
 /* ---- HESAP PANOSU (dashboard) ---- */
 async function showAccountHome(){
   authMode="account"; session=null; currentFamilyId=null;
-  stopAutoRefresh(); resetTheme();
+  stopAutoRefresh(); resetTheme(); removeFeedbackBubble();
   document.getElementById("loginView").classList.add("hidden");
   document.getElementById("appView").classList.add("hidden");
   document.getElementById("wizardMount").innerHTML="";
@@ -1081,7 +1082,7 @@ function backToAccount(){
 }
 function appExit(){ if(authMode==="root") logoutAccount(); else backToAccount(); }
 function logoutAccount(){
-  stopAutoRefresh();
+  stopAutoRefresh(); removeFeedbackBubble();
   localStorage.removeItem(ACC_TOKEN_KEY);
   authToken=null; account=null; accountFamilies=[]; session=null; authMode="account"; currentFamilyId=null;
   document.getElementById("appView").classList.add("hidden");
@@ -1103,6 +1104,8 @@ function enterApp(){
   if(session.role==="child") applyTheme(themeOf(session)); else resetTheme();
   renderApp();
   startAutoRefresh();
+  removeFeedbackBubble();
+  if(authMode==="child" || authMode==="parent") setTimeout(maybeShowFeedbackBubble, 70000);   // bir sure sonra geri bildirim baloncugu
   if(session.role==="child"){ setTimeout(showAnnouncements, 500); setTimeout(checkCheckpointCelebration, 1100); setTimeout(showApprovalReminder, 1700); setTimeout(showWeeklyReminder, 2300); }
 }
 function logout(){ logoutAccount(); }   // eski cagrilar icin alias
@@ -1901,6 +1904,75 @@ async function decide(compId, status){
   }catch(e){ toast("Hata: "+e.message); }
 }
 
+/* ======================= FEEDBACK (geri bildirim) =======================
+   Cocuk + ebeveyn ayri. Bir sure sonra sag-alt baloncuk. Cocukta temaya gore RPG. */
+const FB_KEY = "gp_fb_state";
+function fbState(){ try{ return JSON.parse(localStorage.getItem(FB_KEY)||"{}"); }catch(e){ return {}; } }
+function fbSet(o){ try{ localStorage.setItem(FB_KEY, JSON.stringify(Object.assign(fbState(),o))); }catch(e){} }
+function maybeShowFeedbackBubble(){
+  if(authMode!=="child" && authMode!=="parent") return;     // yalniz cocuk/ebeveyn
+  if(document.getElementById("modalMount").innerHTML) return;
+  if(document.getElementById("fbBubble")) return;
+  const s=fbState(), now=Date.now();
+  if(s.submitted && now-s.submitted < 30*86400000) return;   // gonderdiyse 30 gun sus
+  if(s.dismissed && now-s.dismissed < 7*86400000) return;    // kapattiysa 7 gun sus
+  const th=(authMode==="child")?themeOf(session):null, bot=th?th.bot:null;
+  const color=th?th.colors.primary:"#6C2BD9";
+  const label=th?`${bot.ico} ${escapeHtml(bot.name)} sana bir şey soracak!`:"💬 Nasıl gidiyor?";
+  const b=document.createElement("div"); b.id="fbBubble";
+  b.style.cssText=`position:fixed;right:14px;bottom:16px;z-index:900;display:flex;align-items:center;gap:8px;background:${color};color:#fff;padding:11px 15px;border-radius:99px;box-shadow:0 12px 30px -8px rgba(0,0,0,.5);cursor:pointer;font-weight:700;font-size:14px;max-width:84vw;animation:fbpop .45s cubic-bezier(.2,.8,.3,1.4)`;
+  b.innerHTML=`<span>${label}</span><span id="fbX" style="opacity:.75;font-size:19px;line-height:1">×</span>`;
+  b.onclick=(e)=>{ if(e.target.id==="fbX"){ dismissFeedbackBubble(); } else openFeedback(); };
+  document.body.appendChild(b);
+}
+function dismissFeedbackBubble(){ const b=document.getElementById("fbBubble"); if(b)b.remove(); fbSet({dismissed:Date.now()}); }
+function removeFeedbackBubble(){ const b=document.getElementById("fbBubble"); if(b)b.remove(); }
+let fbType="rating", fbRating=0;
+function openFeedback(){
+  removeFeedbackBubble(); fbType="rating"; fbRating=0;
+  const th=(authMode==="child")?themeOf(session):null, bot=th?th.bot:null;
+  const head=th
+    ? `<div style="text-align:center"><div style="font-size:44px;animation:bob 2.2s ease-in-out infinite">${bot.ico}</div><div style="font-weight:800;color:${th.colors.primary}">${escapeHtml(bot.name)}</div><div class="sub" style="margin-top:4px">Maceran nasıl gidiyor? Bana bir şey söylemek ister misin?</div></div>`
+    : `<h3 style="margin:0 0 2px">Geri bildirim</h3><div class="sub">Yıldız Avcıları nasıl gidiyor? Görüşün bizim için çok değerli.</div>`;
+  const types=[["rating","⭐","Değerlendirme"],["suggestion","💡","Öneri"],["bug","🐞","Arıza"],["other","💬","Diğer"]];
+  showModal(`
+    ${head}
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 8px">
+      ${types.map(t=>`<button class="fb-type" data-t="${t[0]}" onclick="fbPickType('${t[0]}')" style="flex:1 1 42%;padding:9px;border:2px solid ${t[0]==='rating'?'var(--primary)':'var(--line)'};border-radius:11px;background:var(--card);color:var(--text);cursor:pointer;font-weight:700;font-size:13px">${t[1]} ${t[2]}</button>`).join("")}
+    </div>
+    <div id="fbStars" style="text-align:center;font-size:30px;margin:6px 0;letter-spacing:4px">${[1,2,3,4,5].map(n=>`<span onclick="fbSetRating(${n})" data-n="${n}" style="cursor:pointer;opacity:.3">⭐</span>`).join("")}</div>
+    <textarea id="fbMsg" placeholder="${th?'Yaz bakalım... 🚀':'Mesajın (opsiyonel)'}" style="width:100%;box-sizing:border-box;min-height:74px;padding:11px;border:2px solid var(--line);border-radius:12px;font-family:inherit;font-size:14px;resize:vertical;background:var(--card);color:var(--text)"></textarea>
+    <div class="pin-err" id="fbErr"></div>
+    <button class="btn-primary" style="width:100%;margin-top:6px" onclick="submitFeedback()">Gönder ${th?'🚀':''}</button>
+  `);
+}
+function fbPickType(t){ fbType=t; document.querySelectorAll(".fb-type").forEach(b=>b.style.borderColor=(b.dataset.t===t)?"var(--primary)":"var(--line)"); const s=document.getElementById("fbStars"); if(s) s.style.display=(t==="rating")?"block":"none"; }
+function fbSetRating(n){ fbRating=n; document.querySelectorAll("#fbStars span").forEach(s=>s.style.opacity=(parseInt(s.dataset.n)<=n)?"1":"0.3"); }
+async function submitFeedback(){
+  const msg=document.getElementById("fbMsg").value.trim();
+  if(fbType==="rating" && !fbRating && !msg){ document.getElementById("fbErr").textContent="Yıldız ver ya da birkaç kelime yaz"; return; }
+  if(fbType!=="rating" && !msg){ document.getElementById("fbErr").textContent="Lütfen birkaç kelime yaz"; return; }
+  const body={type:fbType, rating:(fbType==="rating"?fbRating:null), message:msg};
+  try{
+    if(authMode==="child") await api("/feedback",{method:"POST",body});
+    else await api("/account/feedback",{method:"POST",body:Object.assign({familyId:currentFamilyId},body)});
+    fbSet({submitted:Date.now()}); closeModal();
+    const th=(authMode==="child")?themeOf(session):null;
+    showModal(`<div style="text-align:center"><div style="font-size:48px">${th?'🌟':'🙏'}</div><h3 style="margin:8px 0 2px">Teşekkürler!</h3><div class="sub">Görüşün bize ulaştı.</div><button class="btn-primary" style="width:100%;margin-top:10px" onclick="closeModal()">Kapat</button></div>`);
+    if(th && typeof fireConfetti==="function") fireConfetti();
+  }catch(e){ document.getElementById("fbErr").textContent=e.message||"Gönderilemedi"; }
+}
+/* root: bir geri bildirim satiri */
+function fbRootRow(f){
+  const ic={rating:"⭐",suggestion:"💡",bug:"🐞",other:"💬"}[f.type]||"💬";
+  const stars=f.rating?(" "+"★".repeat(f.rating)):"";
+  return `<div class="lb-row" style="align-items:flex-start">
+    <div class="lb-av">${ic}</div>
+    <div class="lb-body"><b>${escapeHtml(f.who)}${f.kind==='child'?' · '+escapeHtml(f.theme||'tema'):''}</b><span style="color:var(--accent,#F9A825)">${stars}</span>
+      <div style="font-size:13px;color:var(--muted)">${escapeHtml(f.family)} · ${timeAgo(f.ts)}</div>
+      ${f.message?`<div style="font-size:14px;margin-top:3px">${escapeHtml(f.message)}</div>`:''}</div></div>`;
+}
+
 /* ======================= ROOT ADMIN VIEW (anonim, GDPR/KVKK) ======================= */
 function rootStat(label, val){
   return `<div style="flex:1 1 28%;min-width:92px;text-align:center;background:var(--line);border-radius:14px;padding:14px 6px">
@@ -1930,6 +2002,7 @@ function renderRoot(){
   const s = state.stats||{};
   const fams = state.families||[];
   const logs = state.chatLogs||[];
+  const fb = state.feedback||[];
   const passRate = s.chats ? Math.round((s.chatPass||0)/s.chats*100) : 0;
   body.innerHTML = `
     <div class="card">
@@ -1952,6 +2025,11 @@ function renderRoot(){
       <h2>🔬 Bot sohbet denetimi <span style="font-size:12px;color:var(--muted);font-weight:600">· son ${logs.length}</span></h2>
       <div class="sub">AI rehberin çocuklarla yazışmaları, kimlik olmadan (güvenlik/kalite denetimi). Geçme oranı: <b>%${passRate}</b></div>
       ${logs.length ? logs.map(rootChatRow).join("") : '<div class="empty"><span class="e">💬</span>Henüz sohbet kaydı yok</div>'}
+    </div>
+    <div class="card">
+      <h2>💬 Geri bildirimler <span style="font-size:12px;color:var(--muted);font-weight:600">· son ${fb.length}</span></h2>
+      <div class="sub">Aile ve çocuklardan değerlendirme/öneri/arıza. Çocuk anonim + isim maskeli; ebeveyn iletişim e-postasıyla.</div>
+      ${fb.length ? fb.map(fbRootRow).join("") : '<div class="empty"><span class="e">📭</span>Henüz geri bildirim yok</div>'}
     </div>
   `;
 }

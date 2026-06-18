@@ -346,7 +346,16 @@ async function getRootState(env, me){
     try{ msgs = JSON.parse(l.messages||"[]").map(m=>({ role:m.role, content: redactNames(m.content, tokSet) })); }catch(e){ msgs=[]; }
     return { id:l.id, child:"Çocuk #"+anonId(l.child_id), family:"Aile #"+anonId(l.family_id||""), messages: msgs, result:l.result, ts:l.ts };
   });
-  return { root:true, stats, families, chatLogs, me: safeUser(me) };
+  // geri bildirimler: cocuk anonim + mesaj isim-maskeli; ebeveyn iletisim e-postasiyla (gonullu destek)
+  const fbRows = (await env.DB.prepare("SELECT id,family_id,kind,ref_id,theme,type,rating,message,contact,ts FROM feedback ORDER BY ts DESC LIMIT 100").all()).results||[];
+  const feedback = fbRows.map(f=>({
+    id:f.id, kind:f.kind, type:f.type, rating:f.rating, theme:f.theme,
+    who: f.kind==="child" ? ("Çocuk #"+anonId(f.ref_id)) : ("Ebeveyn"+(f.contact?" · "+f.contact:"")),
+    family: "Aile #"+anonId(f.family_id||""),
+    message: f.kind==="child" ? redactNames(f.message, tokSet) : f.message,
+    ts:f.ts
+  }));
+  return { root:true, stats, families, chatLogs, feedback, me: safeUser(me) };
 }
 
 /* ---------- aile durumu (account-parent gorunumu icin; aile-kapsamli) ---------- */
@@ -413,6 +422,7 @@ export async function onRequest(context){
   try{
     // GUVENLIK: imza sirri yoksa fail-closed (sabit fallback YOK; token sahteciligini onler)
     if(!env.SESSION_SECRET) return json({error:"Sunucu yapılandırması eksik (SESSION_SECRET)"}, 500);
+    const appUrl = env.APP_URL || "https://yildizavcilari.cryme.tr";   // domain cutover: APP_URL env'i set et
     /* --- public: aile kodu -> o ailenin login uyeleri (PIN yok; mahremiyet: yalniz ilk ad + avatar).
        Cok-aileli: kodu bilmeyen kimse baska ailenin cocuklarini goremez (GDPR/KVKK).
        Root admin: kendi login_code'u ile girer (aile listesine cikmaz). --- */
@@ -484,7 +494,7 @@ export async function onRequest(context){
       await env.DB.prepare("INSERT INTO accounts (id,email,email_verified,pw_hash,pw_salt,pw_iter,name,created_ts,last_login) VALUES (?,?,0,?,?,?,?,?,?)")
         .bind(id, email, ph.hash, ph.salt, ph.iter, nm, Date.now(), Date.now()).run();
       context.waitUntil(sendEmail(env, email, "Yıldız Avcıları'na hoş geldin! 🌟",
-        "<p>Merhaba "+nm+",</p><p>Yıldız Avcıları hesabın hazır. Ailenle başlamak için <a href=\"https://yildizavcilari.cryme.tr\">giriş yap</a>, bir aile kur ve çocuk profillerini ekle.</p><p>İyi maceralar! 🌟</p>"));
+        "<p>Merhaba "+nm+",</p><p>Yıldız Avcıları hesabın hazır. Ailenle başlamak için <a href=\""+appUrl+"\">giriş yap</a>, bir aile kur ve çocuk profillerini ekle.</p><p>İyi maceralar! 🌟</p>"));
       return json({ token: await accountToken(env, id), account:{id, email, name:nm} });
     }
     /* --- giris (email + parola) --- */
@@ -708,7 +718,7 @@ export async function onRequest(context){
         const tok = genCode(20);
         await env.DB.prepare("INSERT INTO family_invites (id,family_id,email,role,invited_by,token,status,ts) VALUES (?,?,?,?,?,?, 'pending', ?)")
           .bind("inv_"+Date.now()+"_"+Math.floor(Math.random()*1e6), body.familyId, em, r, acc.id, tok, Date.now()).run();
-        const inviteLink = "https://yildizavcilari.cryme.tr/?invite="+tok;
+        const inviteLink = appUrl+"/?invite="+tok;
         context.waitUntil(sendEmail(env, em, "Yıldız Avcıları aile daveti ✉️",
           "<p>Bir aileye "+(r==="child"?"çocuk":"ebeveyn")+" olarak davet edildin.</p><p>Kabul etmek için bu e-posta ile giriş yap / kayıt ol ve linke tıkla:</p><p><a href=\""+inviteLink+"\">Daveti kabul et</a></p>"));
         return json({ ok:true, inviteToken:tok, role:r });   // e-posta varsa gonderilir; yoksa link UI'da paylasilir
@@ -724,6 +734,16 @@ export async function onRequest(context){
         await env.DB.prepare("INSERT OR IGNORE INTO account_families (account_id,family_id,role,added_ts) VALUES (?,?,'parent',?)").bind(acc.id, inv.family_id, Date.now()).run();
         await env.DB.prepare("UPDATE family_invites SET status='accepted' WHERE id=?").bind(inv.id).run();
         return json({ ok:true, familyId: inv.family_id });
+      }
+
+      // ebeveyn: geri bildirim (degerlendirme/oneri/ariza); iletisim icin hesap e-postasi (gonullu)
+      if(route==="account/feedback" && method==="POST"){
+        const t = ["rating","suggestion","bug","other"].includes(body.type) ? body.type : "other";
+        const r = body.rating!=null ? (Math.max(1,Math.min(5,parseInt(body.rating)||0))||null) : null;
+        const fid = (body.familyId && await accountInFamily(env, acc.id, body.familyId)) ? body.familyId : null;
+        await env.DB.prepare("INSERT INTO feedback (id,family_id,kind,ref_id,theme,type,rating,message,contact,ts) VALUES (?,?,'parent',?,NULL,?,?,?,?,?)")
+          .bind("fb_"+Date.now()+"_"+Math.floor(Math.random()*1e6), fid, acc.id, t, r, String(body.message||"").slice(0,1000), acc.email||null, Date.now()).run();
+        return json({ ok:true });
       }
 
       return bad("Bilinmeyen hesap ucu: "+route, 404);
@@ -898,6 +918,16 @@ export async function onRequest(context){
       const { theme } = body;
       if(!["scifi","fantasy","pixel","ocean","hero"].includes(theme)) return bad("Geçersiz tema");
       await env.DB.prepare("UPDATE users SET theme=? WHERE id=?").bind(theme, me.id).run();
+      return json({ ok:true });
+    }
+
+    /* --- cocuk: geri bildirim (degerlendirme/oneri/ariza) --- */
+    if(route==="feedback" && method==="POST"){
+      if(me.role!=="child") return bad("Yetkisiz", 403);
+      const t = ["rating","suggestion","bug","other"].includes(body.type) ? body.type : "other";
+      const r = body.rating!=null ? (Math.max(1,Math.min(5,parseInt(body.rating)||0))||null) : null;
+      await env.DB.prepare("INSERT INTO feedback (id,family_id,kind,ref_id,theme,type,rating,message,contact,ts) VALUES (?,?,'child',?,?,?,?,?,NULL,?)")
+        .bind("fb_"+Date.now()+"_"+Math.floor(Math.random()*1e6), me.family_id, me.id, me.theme||null, t, r, String(body.message||"").slice(0,1000), Date.now()).run();
       return json({ ok:true });
     }
 
