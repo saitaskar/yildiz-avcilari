@@ -503,8 +503,10 @@ const THEMES = {
     miles:{0:"Sular bulanık...",25:"Dipte bir parıltı 🫧",50:"Sandık görüş alanında!",75:"Sandığın kilidi açılıyor...",100:"SANDIK AÇILDI 🪸"},
     tut:[
       "Merhaba kâşif! Ben Mercan, dalış yoldaşın yunus. Büyük Karne Sezonu başladı ve dipteki kayıp hazineyi bulma görevi sana düştü.",
+      "Bu hazine sıradan değil: yüzyıllar önce bir deniz kaptanı onu en derine saklamış, sadece en cesur kâşif bulabilirmiş. O kâşif sen olabilirsin.",
       "Her gün küçük dalışlar (görevler) yaparsın: oksijen doldur, mercanları temizle. Kanıtını yollarsın, Deniz Üssü (ailen) onaylar ve hazineye yaklaşırsın.",
-      "Dalışların saatleri var, zamanı gelince açılır. Haftada bir derin keşif günlüğü yazarsın. Cesaret doldukça sandık belirir. Dalışa hazır mısın?"
+      "Dalışların saatleri var, zamanı gelince açılır. Haftada bir derin keşif günlüğü yazarsın. Cesaret doldukça sandık belirir.",
+      "Yolda yeni rütbeler kazanırsın: Yüzücü'den başlayıp Yedi Deniz Hükümdarı'na kadar (8 kademe). Her rütbe seni hazineye yaklaştırır. Dalışa hazır mısın?"
     ],
     tasks:{
       ogren:{title:"Keşif Günlüğü", sub:"Bugün öğrendiğini deniz günlüğüne yaz"},
@@ -535,8 +537,10 @@ const THEMES = {
     miles:{0:"Güç uykuda...",25:"İçinde bir kıvılcım ⚡",50:"Gücün uyanıyor!",75:"Pelerin dalgalanıyor...",100:"GÜÇ AÇIĞA ÇIKTI 🦸"},
     tut:[
       "Selam kahraman adayı! Ben Vızıltı, senin robot yardımcın. Büyük Karne Sezonu başladı ve gizli süper gücünü açma görevi sende!",
+      "Şehir sana güveniyor: içinde uyuyan bir süper güç var ama onu ancak her gün iyilik yapan, çalışan bir kahraman uyandırabilir.",
       "Her gün kahramanlık görevleri yaparsın: enerjini şarj et, antren yap. Kanıtını yollarsın, Kahraman Merkezi (ailen) onaylar ve gücün büyür.",
-      "Görevlerin belli saatlerde açılır. Haftada bir yeni bir şey öğrenip raporlarsın. Güç doldukça pelerin belirir. Göreve hazır mısın kahraman?"
+      "Görevlerin belli saatlerde açılır. Haftada bir yeni bir şey öğrenip raporlarsın. Güç doldukça pelerin belirir.",
+      "Yükseldikçe rütbe atlarsın: Çaylak'tan Galaksi Koruyucusu'na kadar (8 kademe). Her rütbe yeni bir güç demek. Göreve hazır mısın kahraman?"
     ],
     tasks:{
       ogren:{title:"Kahraman Raporu", sub:"Bugün öğrendiğin yeni şeyi anlat"},
@@ -567,8 +571,10 @@ const THEMES = {
     miles:{0:"Toprak sessiz...",25:"Bir fosil ucu göründü 🦴",50:"Yumurta yarı çıktı!",75:"Kabuk çatlıyor...",100:"ALTIN YUMURTA ÇIKTI 🥚"},
     tut:[
       "Merhaba kâşif! Ben Rex, kazı yoldaşın küçük dino. Büyük Karne Sezonu başladı ve toprağın altındaki altın yumurtayı bulma görevi sana düştü.",
+      "Bu yumurta milyonlarca yıllık bir sır taşıyor. Onu gün yüzüne çıkaran kâşif, tarihin en büyük keşfini yapacak. O kâşif sen olabilirsin.",
       "Her gün küçük kazılar (görevler) yaparsın: alet hazırla, erzak topla. Kanıtını yollarsın, Kazı Ekibi (ailen) onaylar ve yumurtaya yaklaşırsın.",
-      "Kazıların saatleri var, zamanı gelince açılır. Haftada bir keşif günlüğü yazarsın. Cesaret doldukça yumurta belirir. Kazıya hazır mısın?"
+      "Kazıların saatleri var, zamanı gelince açılır. Haftada bir keşif günlüğü yazarsın. Cesaret doldukça yumurta belirir.",
+      "İlerledikçe rütbe atlarsın: Çaylak Kazıcı'dan Jura Hükümdarı'na kadar (8 kademe). Her rütbe seni yumurtaya yaklaştırır. Kazıya hazır mısın?"
     ],
     tasks:{
       ogren:{title:"Kazı Günlüğü", sub:"Bugün öğrendiğini kazı defterine yaz"},
@@ -799,19 +805,21 @@ function userStreak(userId){
 }
 /* seviye/rutbe: yildiza gore, tema diline uygun */
 const RANK_STEPS = [0,150,400,800,1400,2200];
+const RANK_STEPS_PREMIUM = [0,150,400,800,1400,2200,3200,4500];   // premium temalar: 8 kademe (daha uzun ilerleme)
 const RANKS = {
   scifi:["Çaylak","Pilot","Kaptan","Komutan","Amiral","Yıldız Amirali"],
   fantasy:["Çırak","Silahtar","Şövalye","Kumandan","Lord","Efsane"],
   pixel:["Yeni Oyuncu","Madenci","İnşaatçı","Mimar","Usta","Efsane"],
-  ocean:["Yüzücü","Dalgıç","Kâşif","Derin Dalgıç","Deniz Kaptanı","Okyanus Efsanesi"],
-  hero:["Çaylak","Çırak Kahraman","Koruyucu","Kahraman","Süper Kahraman","Efsane"],
-  dino:["Çaylak Kazıcı","İz Sürücü","Dino Avcısı","Kâşif","Usta Paleontolog","Dino Efsanesi"],
+  ocean:["Yüzücü","Dalgıç","Kâşif","Derin Dalgıç","Deniz Kaptanı","Mercan Lordu","Okyanus Efsanesi","Yedi Deniz Hükümdarı"],
+  hero:["Çaylak","Çırak Kahraman","Koruyucu","Kahraman","Süper Kahraman","Şehrin Gururu","Efsane Kahraman","Galaksi Koruyucusu"],
+  dino:["Çaylak Kazıcı","İz Sürücü","Dino Avcısı","Kâşif","Usta Paleontolog","Fosil Ustası","Dino Efsanesi","Jura Hükümdarı"],
   default:["Başlangıç","Acemi","Gözde","Uzman","Şampiyon","Efsane"]
 };
 function userRank(xp, themeId){
+  const steps = (THEMES[themeId] && THEMES[themeId].premium) ? RANK_STEPS_PREMIUM : RANK_STEPS;   // premium: 8 kademe
   const list = RANKS[themeId]||RANKS.default;
-  let i=0; for(let k=0;k<RANK_STEPS.length;k++){ if(xp>=RANK_STEPS[k]) i=k; }
-  return { name:list[i], level:i+1, next:(RANK_STEPS[i+1]||null) };
+  let i=0; for(let k=0;k<steps.length;k++){ if(xp>=steps[k]) i=k; }
+  return { name:list[i]||list[list.length-1], level:i+1, next:(steps[i+1]||null) };
 }
 /* rozetler/basarimlar (mevcut veriden turetilir, D1 tablosu yok) */
 function userBadges(userId){
