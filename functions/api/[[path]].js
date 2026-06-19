@@ -20,6 +20,10 @@ const WEEKLY_TASKS = new Set(["ogren","ekransiz","fiziksel"]);  // gerisi gunluk
 const STREAK_MIN = 3;            // bir gunluk gorevi bu kadar gun ust uste yapinca bonus baslar
 const STREAK_BONUS = 5;          // her bonus gunu icin ekstra yildiz (gun 3'ten itibaren)
 const CONSENT_VERSION = "2026-06-18";  // kabul edilen Kosullar/Gizlilik surumu; materyal degisince yukselt (sunucu onam kaydi)
+/* FREEMIUM: bu esikten ONCE olusan hesap/aile sinirsiz (grandfather: mevcut Askar/Cilingir aileleri).
+   Ucretsiz limitler. KULLANICIYA 'premium' DEME -> mesaj 'yakinda'. Gercek premium ileride. */
+const LIM_FROM = Date.parse("2026-06-19T00:00:00Z");
+const FREE = { families:1, children:2, parents:2, checkpoints:2, customTasks:4 };
 
 function dayDiff(a,b){ return Math.round((Date.parse(b+"T00:00:00Z") - Date.parse(a+"T00:00:00Z"))/86400000); }
 /* bir gorevin gun listesinden seri bonusu: her ardisik kosuda (uzunluk L) max(0,L-(MIN-1)) gun x BONUS */
@@ -85,6 +89,7 @@ async function checkCheckpoints(env, userId){
 const json = (data, status=200) =>
   new Response(JSON.stringify(data), {status, headers:{"content-type":"application/json"}});
 const bad = (msg, status=400) => json({error:msg}, status);
+const soon = (msg) => bad(msg+" Daha fazlası yakında ✨", 403);   // freemium limiti: kullaniciya 'premium' DEME
 const firstName = (n) => String(n||"").split(" ")[0];   // login ekraninda mahremiyet: yalniz ilk ad
 /* karisik-olmayan kod uret (aile/davet anahtari) */
 function genCode(n){ const A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; n=n||8; let s=""; const r=crypto.getRandomValues(new Uint8Array(n)); for(let i=0;i<n;i++) s+=A[r[i]%A.length]; return s; }
@@ -238,6 +243,13 @@ async function accountToken(env, accId){
 async function accountInFamily(env, accId, familyId){
   return await env.DB.prepare("SELECT role FROM account_families WHERE account_id=? AND family_id=?").bind(accId, familyId).first();
 }
+/* freemium grandfather: esikten ONCE olusan hesap/aile limitlerden muaf */
+function accLimited(acc){ return !!(acc && acc.created_ts && acc.created_ts >= LIM_FROM); }
+async function famLimited(env, familyId){
+  const f = await env.DB.prepare("SELECT created_ts FROM families WHERE id=?").bind(familyId).first();
+  return !!(f && f.created_ts && f.created_ts >= LIM_FROM);
+}
+async function cnt(env, sql, ...args){ const r = await env.DB.prepare(sql).bind(...args).first(); return (r && r.n) || 0; }
 /* outbound e-posta HTML'ine giren kullanici metnini kacisla (HTML injection onler) */
 const escHtml = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 /* e-posta gonder (Resend; key yoksa dry-run false doner) */
@@ -633,6 +645,8 @@ export async function onRequest(context){
       if(route==="account/create-family" && method==="POST"){
         const name = String(body.name||"").trim().slice(0,40);
         if(!name) return bad("Aile adı gir");
+        if(accLimited(acc) && await cnt(env,"SELECT COUNT(*) n FROM account_families WHERE account_id=?",acc.id) >= FREE.families)
+          return soon("Şimdilik bir aile kurabilirsin.");
         const fid = "fam_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
         await env.DB.prepare("INSERT INTO families (id,name,code,owner_id,created_ts,owner_account_id) VALUES (?,?,?,?,?,?)")
           .bind(fid, name, genCode(8), null, Date.now(), acc.id).run();
@@ -648,6 +662,8 @@ export async function onRequest(context){
         const { familyId, name, age, av, pin } = body;
         if(!familyId || !name || !String(name).trim()) return bad("Aile ve çocuk adı gerekli");
         if(!await accountInFamily(env, acc.id, familyId)) return bad("Bu aile sizin değil", 403);
+        if(await famLimited(env, familyId) && await cnt(env,"SELECT COUNT(*) n FROM users WHERE family_id=? AND role='child'",familyId) >= FREE.children)
+          return soon("Bu ailede 2 çocuk profili var.");
         const cid = "u_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
         const pinVal = (pin!=null && String(pin).trim()!=="") ? String(pin).trim().slice(0,8) : "";
         await env.DB.prepare("INSERT INTO users (id,role,name,age,pin,av,family_id) VALUES (?,'child',?,?,?,?,?)")
@@ -692,6 +708,8 @@ export async function onRequest(context){
         if(!await accountInFamily(env, acc.id, familyId)) return bad("Yetkisiz", 403);
         const ch = await env.DB.prepare("SELECT family_id FROM users WHERE id=? AND role='child'").bind(childId).first();
         if(!ch || ch.family_id !== familyId) return bad("Bu çocuk bu ailede değil", 403);
+        if(await famLimited(env, familyId) && await cnt(env,"SELECT COUNT(*) n FROM custom_tasks WHERE family_id=? AND status='active'",familyId) >= FREE.customTasks)
+          return soon("Bu ailede 4 özel görev var.");
         const id = "ct_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
         const x = Math.max(1, Math.min(50, parseInt(xp)||10));
         await env.DB.prepare("INSERT INTO custom_tasks (id,child_id,created_by,title,emoji,xp,status,ts,family_id) VALUES (?,?,?,?,?,?, 'active', ?, ?)")
@@ -714,6 +732,8 @@ export async function onRequest(context){
         if(!await accountInFamily(env, acc.id, familyId)) return bad("Yetkisiz", 403);
         const ch = await env.DB.prepare("SELECT family_id FROM users WHERE id=? AND role='child'").bind(childId).first();
         if(!ch || ch.family_id !== familyId) return bad("Bu çocuk bu ailede değil", 403);
+        if(await famLimited(env, familyId) && await cnt(env,"SELECT COUNT(*) n FROM checkpoints WHERE child_id=? AND status IN ('pending','reached')",childId) >= FREE.checkpoints)
+          return soon("Bu çocuk için 2 ara ödül var.");
         const id = "cp_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
         await env.DB.prepare("INSERT INTO checkpoints (id,child_id,created_by,threshold,reward,status,ts,family_id) VALUES (?,?,?,?,?, 'pending', ?, ?)")
           .bind(id, childId, "acc:"+acc.id, th, String(reward).trim().slice(0,60), Date.now(), familyId).run();
@@ -736,6 +756,15 @@ export async function onRequest(context){
         if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return bad("Geçerli bir e-posta gir");
         const link = await accountInFamily(env, acc.id, body.familyId);
         if(!link) return bad("Yetkisiz", 403);
+        if(await famLimited(env, body.familyId)){
+          if(r==="child"){
+            const k = await cnt(env,"SELECT (SELECT COUNT(*) FROM users WHERE family_id=? AND role='child')+(SELECT COUNT(*) FROM family_invites WHERE family_id=? AND role='child' AND status='pending') n", body.familyId, body.familyId);
+            if(k >= FREE.children) return soon("Bu ailede 2 çocuk profili var.");
+          } else {
+            const p = await cnt(env,"SELECT (SELECT COUNT(*) FROM account_families WHERE family_id=?)+(SELECT COUNT(*) FROM family_invites WHERE family_id=? AND role='parent' AND status='pending') n", body.familyId, body.familyId);
+            if(p >= FREE.parents) return soon("Bu ailede 2 ebeveyn var.");
+          }
+        }
         // cocuk daveti: kabul edildiginde olusturulacak cocuk profili davette tasinir
         let cName=null, cAge=null, cAv=null;
         if(r==="child"){
@@ -762,6 +791,12 @@ export async function onRequest(context){
         // davet, gonderildigi e-postaya BAGLI: linki ele geciren baskasi katilamaz (parent + cocuk icin de; yetki yukseltme onler)
         if(!acc.email || String(inv.email).toLowerCase() !== String(acc.email).toLowerCase())
           return bad("Bu davet bu hesaba ait değil. Davetin gönderildiği e-posta ile giriş yap.", 403);
+        if(await famLimited(env, inv.family_id)){   // davet ile aile dolduysa kabulu engelle
+          if(inv.role==="child" && await cnt(env,"SELECT COUNT(*) n FROM users WHERE family_id=? AND role='child'",inv.family_id) >= FREE.children)
+            return soon("Bu ailede 2 çocuk profili var.");
+          if(await cnt(env,"SELECT COUNT(*) n FROM account_families WHERE family_id=?",inv.family_id) >= FREE.parents)
+            return soon("Bu ailede 2 ebeveyn var.");
+        }
         // atomik kilit: yalniz pending->accepted'i ceviren istek devam eder (cift-gonderim/yaris -> tek cocuk profili)
         const claim = await env.DB.prepare("UPDATE family_invites SET status='accepted' WHERE id=? AND status='pending'").bind(inv.id).run();
         if(!claim.meta || !claim.meta.changes) return bad("Davet zaten kullanılmış", 409);
