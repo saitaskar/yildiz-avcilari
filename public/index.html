@@ -50,10 +50,11 @@
     display:flex;align-items:center;justify-content:space-between;
     box-shadow:0 4px 16px rgba(0,0,0,.12);
   }
-  .topbar .brand{font-weight:800;font-size:18px;letter-spacing:.3px;display:flex;align-items:center;gap:8px;}
-  .topbar .who{font-size:13px;opacity:.92;display:flex;align-items:center;gap:10px;}
+  .topbar .brand{font-weight:800;font-size:18px;letter-spacing:.3px;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+  .topbar .who{font-size:13px;opacity:.92;display:flex;align-items:center;gap:10px;min-width:0;}
   .topbar .who b{font-weight:700;}
-  .btn-logout{background:rgba(255,255,255,.18);color:#fff;border-radius:12px;padding:7px 12px;font-size:13px;font-weight:600;}
+  .topbar #whoLabel{max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle;}
+  .btn-logout{background:rgba(255,255,255,.18);color:#fff;border-radius:12px;padding:7px 12px;font-size:13px;font-weight:600;white-space:nowrap;flex-shrink:0;}
   .notif-badge{background:#FF3B30;color:#fff;border-radius:20px;padding:4px 10px;font-size:12px;font-weight:800;}
   .btn-logout:active{background:rgba(255,255,255,.3);}
 
@@ -76,11 +77,11 @@
   @keyframes twk{0%,100%{opacity:.35}50%{opacity:.62}}
   .login-hero{position:relative;z-index:1;text-align:center;padding:48px 16px 6px;}
   .login-hero .logo{font-size:64px;filter:drop-shadow(0 0 18px rgba(255,209,102,.85));animation:bob 3s ease-in-out infinite;display:inline-block;}
-  .login-hero h1{margin:10px 0 4px;font-family:'Fredoka',sans-serif;font-weight:700;font-size:34px;color:#fff;letter-spacing:.01em;text-shadow:0 2px 22px rgba(108,43,217,.55);}
+  .login-hero h1{margin:10px 0 4px;font-family:'Baloo 2',sans-serif;font-weight:700;font-size:34px;color:#fff;letter-spacing:.01em;text-shadow:0 2px 22px rgba(108,43,217,.55);}
   .login-hero p{color:rgba(255,255,255,.8);margin:0;font-size:15px;font-weight:600;}
   #authCard{position:relative;z-index:1;border-radius:22px;box-shadow:0 26px 64px -22px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.06);}
-  #authCard .seg button{font-family:'Fredoka',sans-serif;}
-  #authCard #authSubmit{font-family:'Fredoka',sans-serif;font-size:17px;letter-spacing:.01em;}
+  #authCard .seg button{font-family:'Baloo 2',sans-serif;}
+  #authCard #authSubmit{font-family:'Baloo 2',sans-serif;font-size:17px;letter-spacing:.01em;}
   .role-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:18px 0;}
   .role-btn{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:16px 8px;text-align:center;font-weight:700;font-size:13px;color:var(--text);transition:.15s;}
   .role-btn .ico{font-size:30px;display:block;margin-bottom:6px;}
@@ -993,7 +994,7 @@ function renderAccountHome(){
 }
 function familyCard(f){
   const kids = f.children.map(c=>`
-    <div class="name-item" onclick="enterChildMode('${c.id}')" style="cursor:pointer;display:flex;align-items:center;gap:10px">
+    <div class="name-item" role="button" tabindex="0" onclick="enterChildMode('${c.id}')" onkeydown="if(event.key==='Enter'){enterChildMode('${c.id}')}" style="cursor:pointer;display:flex;align-items:center;gap:10px">
       <div class="av">${escapeHtml(c.av||'🙂')}</div>
       <div style="flex:1">${escapeHtml(c.name)}<small>${c.hasPin?'🔒 PIN':'profil'}</small></div>
       <button onclick="event.stopPropagation();delChild('${c.id}')" title="Profili sil" style="background:none;border:none;font-size:15px;opacity:.45;cursor:pointer;padding:6px">🗑️</button></div>`).join("");
@@ -1220,7 +1221,7 @@ function wizClasses(){
   const isPrem = !!(state && state.premium);
   const cards = Object.values(THEMES).map(t=>{
     const locked = t.premium && !isPrem;
-    return `<div class="class-card" style="background:${t.cardGrad};${locked?'opacity:.6;':''}" onclick="${locked?"toast('✨ Bu dünya yakında açılacak')":`wizPick('${t.id}')`}">
+    return `<div class="class-card" role="button" tabindex="0" style="background:${t.cardGrad};${locked?'opacity:.6;':''}" onclick="wizCardGo('${t.id}',${locked})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();wizCardGo('${t.id}',${locked})}">
       <div class="cc-ico" style="background:rgba(0,0,0,.25)">${t.ico}</div>
       <div>
         <div class="cc-class">${t.cls}${locked?' 🔒':''}</div>
@@ -1235,6 +1236,7 @@ function wizClasses(){
     <div class="class-grid">${cards}</div>`, true);
 }
 function wizPick(themeId){ wizPickedTheme=themeId; wizStep=0; wizTutorial(); }
+function wizCardGo(id, locked){ if(locked) toast('✨ Bu dünya yakında açılacak'); else wizPick(id); }
 function wizTutorial(){
   const th=THEMES[wizPickedTheme];
   const steps=th.tut; const last=wizStep>=steps.length-1;

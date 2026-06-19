@@ -1,17 +1,19 @@
-/* Yildiz Avcilari - self-hosted COMPLETE variable fonts.
-   Tek dosya, unicode-range BOLMESI YOK -> her karakter (Turkce dahil: c o u i s g i, C O U I S G) ayni dosyadan gelir.
-   Bolunmus latin/latin-ext yaklasimi Turkce harfleri ayri dosyaya atip bozabiliyordu; bu onu komple cozer. */
+/* Yildiz Avcilari - self-hosted fonts.
+   ONEMLI KOK NEDEN: Fredoka, Turkce İ/Ş/ş/Ğ/ğ glifelerini ICERMIYOR (cmap'te yok). Basliklarda o 5 harf
+   sistem fontuna dusup "bozuk" gorunuyordu; woff2/ttf/hosting bunu cozemez cunku glif fontta yok.
+   -> Tam-Turkce "Baloo 2"ye gecildi (Fredoka'ya cok benzer rounded-playful stil). Govde fontu Nunito (tam Turkce).
+   Her ikisi: woff2 (subset: latin + latin-ext A/B = tam Turkce) + ttf fallback. Tek dosya/aile, unicode-range bolmesi YOK. */
 @font-face {
-  font-family: 'Fredoka';
+  font-family: 'Baloo 2';
   font-style: normal;
-  font-weight: 300 700;
+  font-weight: 400 800;
   font-display: swap;
-  src: url(/fonts/Fredoka.ttf) format('truetype');
+  src: url(/fonts/Baloo2.woff2) format('woff2'), url(/fonts/Baloo2.ttf) format('truetype');
 }
 @font-face {
   font-family: 'Nunito';
   font-style: normal;
   font-weight: 200 1000;
   font-display: swap;
-  src: url(/fonts/Nunito.ttf) format('truetype');
+  src: url(/fonts/Nunito.woff2) format('woff2'), url(/fonts/Nunito.ttf) format('truetype');
 }
