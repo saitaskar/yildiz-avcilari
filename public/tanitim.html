@@ -23,7 +23,7 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/fonts.css">
 <style>
 :root{
   --bg:#0E0A2A; --bg2:#1A1147; --card:rgba(255,255,255,.06); --line:rgba(255,255,255,.12);
@@ -240,13 +240,13 @@ const T = {
     ],
 
     kidLead:"Çocuğun Ekranı", kidH:"Bir günün görevleri",
-    kidSub:"Zamanı gelen görevler aktif olur; her görev seçilen temaya göre isim alır (örnek: Galaktik Kâşif).",
+    kidSub:"Zamanı gelen görevler aktif olur; görev temaya göre eğlenceli bir isim alır, hemen altında gerçek anlamı yazar.",
     kidScreenTitle:"🦁 Demir · Kaptan", kidScreenSub:"Bugünün seferleri · 🔥 5 günlük seri",
     kidTasks:[
-      ["🛏️","Yer Çekimi Kalkanları","+15 ⭐ · 🕐 07-11","fire","🔥 5g","Yaptım"],
-      ["🦷","Sonik Kalkan · şafak","✓ Tamamlandı","done","","" ],
-      ["💧","Soğutma Sıvısı 2/3","+3 ⭐ · 🕐 gün boyu","","","Yaptım"],
-      ["🧠","Keşif Raporu","+150 ⭐ · haftalık · sohbet","","","Başla"]
+      ["🛏️","Yer Çekimi Kalkanları","+15 ⭐ · 🕐 07-11","fire","🔥 5g","Yaptım","Yatağını topla, odanı düzenle"],
+      ["🦷","Sonik Kalkan · şafak","✓ Tamamlandı","done","","","Diş fırçalama (sabah)"],
+      ["💧","Soğutma Sıvısı 2/3","+3 ⭐ · 🕐 gün boyu","","","Yaptım","Su içme"],
+      ["🧠","Keşif Raporu","+150 ⭐ · haftalık · sohbet","","","Başla","Yeni bir şey öğren, botla anlat"]
     ],
 
     famLead:"Ailenin Ekranı", famH:"Tek dokunuşla onay",
@@ -350,13 +350,13 @@ const T = {
     ],
 
     kidLead:"The Kid's Screen", kidH:"A day's missions",
-    kidSub:"Tasks become active when their time comes; each task is named after the chosen theme (e.g. Galactic Explorer).",
+    kidSub:"Tasks become active when their time comes; each task gets a fun themed name, with its real meaning right below it.",
     kidScreenTitle:"🦁 Demir · Captain", kidScreenSub:"Today's missions · 🔥 5-day streak",
     kidTasks:[
-      ["🛏️","Gravity Shields","+15 ⭐ · 🕐 07-11","fire","🔥 5d","Done"],
-      ["🦷","Sonic Shield · dawn","✓ Completed","done","",""],
-      ["💧","Coolant Fluid 2/3","+3 ⭐ · 🕐 all day","","","Done"],
-      ["🧠","Discovery Report","+150 ⭐ · weekly · chat","","","Start"]
+      ["🛏️","Gravity Shields","+15 ⭐ · 🕐 07-11","fire","🔥 5d","Done","Make the bed, tidy your room"],
+      ["🦷","Sonic Shield · dawn","✓ Completed","done","","","Brushing teeth (morning)"],
+      ["💧","Coolant Fluid 2/3","+3 ⭐ · 🕐 all day","","","Done","Drinking water"],
+      ["🧠","Discovery Report","+150 ⭐ · weekly · chat","","","Start","Learn something new, explain it to the bot"]
     ],
 
     famLead:"The Family's Screen", famH:"One-tap approval",
@@ -494,7 +494,7 @@ function render(){
       <p class="sub">${t.kidSub}</p>
       <div class="screen">
         <div class="screen-title">${t.kidScreenTitle}</div><div class="screen-sub">${t.kidScreenSub}</div>
-        ${t.kidTasks.map(k=>`<div class="tk"><div class="tk-ico">${k[0]}</div><div class="tk-b"><div class="tk-t">${k[1]}</div><div class="tk-m"><span class="tk-chip${k[3]==='done'?' win':''}">${k[2]}</span>${k[4]?`<span class="tk-chip fire">${k[4]}</span>`:""}</div></div>${k[3]==='done'?'<div class="tk-done">✅</div>':`<div class="tk-btn">${k[5]}</div>`}</div>`).join("")}
+        ${t.kidTasks.map(k=>`<div class="tk"><div class="tk-ico">${k[0]}</div><div class="tk-b"><div class="tk-t">${k[1]}</div>${k[6]?`<div style="font-size:11.5px;color:var(--ink55);margin-top:1px">↳ ${k[6]}</div>`:""}<div class="tk-m"><span class="tk-chip${k[3]==='done'?' win':''}">${k[2]}</span>${k[4]?`<span class="tk-chip fire">${k[4]}</span>`:""}</div></div>${k[3]==='done'?'<div class="tk-done">✅</div>':`<div class="tk-btn">${k[5]}</div>`}</div>`).join("")}
       </div>
     </section>
 
