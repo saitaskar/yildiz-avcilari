@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Yıldız Avcıları</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#6C2BD9">
@@ -11,8 +11,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Yıldız">
 <link rel="icon" type="image/png" href="/icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="/fonts.css">
 <style>
   :root{
@@ -299,7 +297,7 @@
       <div class="pin-err" id="authErr"></div>
       <button class="btn-primary" style="width:100%" id="authSubmit" onclick="submitAuth()">Giriş yap</button>
       <div id="authAltDivider" style="display:flex;align-items:center;gap:10px;margin:16px 2px 12px;color:var(--muted);font-size:12.5px"><span style="flex:1;height:1px;background:var(--line)"></span>ya da<span style="flex:1;height:1px;background:var(--line)"></span></div>
-      <div id="authGoogle" style="display:flex;justify-content:center"></div>
+      <div id="authGoogle" style="display:flex;justify-content:center;width:100%;max-width:300px;margin:0 auto;overflow:hidden"></div>
       <button class="btn-ghost hidden" id="authEmailCodeBtn" style="width:100%;margin-top:10px" onclick="startEmailCode()">✉️ E-postama kod gönder</button>
       <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--line);text-align:center;font-size:11px;color:var(--muted);line-height:1.9">
         <a href="/tanitim.html" style="color:var(--muted)">Hakkında</a> ·
@@ -661,7 +659,7 @@ async function refreshState(){
   if(authMode==="parent"){   // ebeveyn modu: hesap token'i ile aile durumu
     const d = await api("/account/family-state?familyId="+encodeURIComponent(currentFamilyId));
     const kids = (d.users||[]).filter(u=>u.role==="child").map(u=>u.id);
-    state = { season:d.season, users:d.users||[], completions:d.completions||[], customTasks:d.customTasks||[], checkpoints:d.checkpoints||[], chatLogs:d.chatLogs||[], rewards:d.rewards||[], family:d.family||null };
+    state = { season:d.season, users:d.users||[], completions:d.completions||[], customTasks:d.customTasks||[], checkpoints:d.checkpoints||[], chatLogs:d.chatLogs||[], rewards:d.rewards||[], premium:d.premium, family:d.family||null };
     session = { id:"acc:"+(account?account.id:""), role:"approver", name:(account?(account.name||account.email):"Ebeveyn"), title:"Ebeveyn", av:"👤", kids, isRoot:0 };
     return;
   }
@@ -689,20 +687,6 @@ async function hydrateProofs(){
       if(r.ok){ img.src = URL.createObjectURL(await r.blob()); img.dataset.loaded="1"; }
     }catch(e){}
   }
-}
-
-/* ---- oturum kaliciligi: 5 dk, ortak PC dostu (her cocuk kendi token'i) ---- */
-const TOKEN_STORE = "gp_tokens";
-const TOKEN_LIFE = 5*60*1000;   // 5 dakika
-function saveToken(id, token){
-  try{ const a=JSON.parse(localStorage.getItem(TOKEN_STORE)||"{}"); a[id]={token, exp:Date.now()+TOKEN_LIFE}; localStorage.setItem(TOKEN_STORE, JSON.stringify(a)); }catch(e){}
-}
-function getSavedToken(id){
-  try{ const a=JSON.parse(localStorage.getItem(TOKEN_STORE)||"{}"); const t=a[id]; if(t && t.exp>Date.now()) return t.token; }catch(e){}
-  return null;
-}
-function clearSavedToken(id){
-  try{ const a=JSON.parse(localStorage.getItem(TOKEN_STORE)||"{}"); delete a[id]; localStorage.setItem(TOKEN_STORE, JSON.stringify(a)); }catch(e){}
 }
 
 /* ======================= HELPERS ======================= */
@@ -737,10 +721,6 @@ function customAsTask(c){
 function taskPeriod(task){ return task.custom ? "all" : (task.type==="weekly" ? "week" : "day"); }
 function doneCount(userId, task){
   return compsFor(userId, task.id, taskPeriod(task)).filter(c=>c.status!=="rejected").length;
-}
-function approvedCount(userId, task){
-  const period = task.type==="weekly" ? "week" : "day";
-  return compsFor(userId, task.id, period).filter(c=>c.status==="approved").length;
 }
 /* bu hafta cocugun hala yapmasi gereken haftalik gorevler (onaydakiler "yapildi" sayilir) */
 function weeklyTodo(userId){
@@ -918,7 +898,7 @@ function initGoogle(clientId){
   const s=document.createElement("script"); s.src="https://accounts.google.com/gsi/client"; s.async=true; s.defer=true;
   s.onload=()=>{ try{
     google.accounts.id.initialize({ client_id:clientId, callback:onGoogleCredential });
-    google.accounts.id.renderButton(mount, { theme:"outline", size:"large", width:360, text:"continue_with", shape:"pill", locale:"tr" });
+    google.accounts.id.renderButton(mount, { theme:"outline", size:"large", text:"continue_with", shape:"pill", locale:"tr" });
     _googleInited=true;
   }catch(e){} };
   document.head.appendChild(s);
@@ -1339,7 +1319,7 @@ function renderChild(){
 }
 function setChildTab(t){
   childTab=t;
-  const segs=document.querySelectorAll(".seg button");
+  const segs=document.querySelectorAll("#appBody .seg button");
   ["today","week","board"].forEach((k,i)=>{ if(segs[i]) segs[i].classList.toggle("active", k===t); });
   renderChildContent();
 }

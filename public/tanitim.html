@@ -21,8 +21,6 @@
 <meta name="twitter:image" content="https://yildizavcilari.com/icon-512.png">
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="/fonts.css">
 <style>
 :root{
@@ -68,12 +66,6 @@ header{display:flex;align-items:center;justify-content:space-between;gap:12px;pa
 .lead{text-align:center;font-size:12.5px;letter-spacing:.18em;color:var(--gold);font-weight:800;text-transform:uppercase;margin-bottom:8px;}
 .h2{font-family:'Fredoka',sans-serif;font-size:clamp(24px,4.5vw,34px);text-align:center;font-weight:700;line-height:1.15;}
 .sub{text-align:center;color:var(--ink70);max-width:600px;margin:10px auto 26px;font-size:15.5px;}
-
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:15px;}
-.f{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px 20px;backdrop-filter:blur(6px);}
-.f .e{font-size:30px;display:block;margin-bottom:8px;}
-.f h3{font-family:'Fredoka',sans-serif;font-size:17px;margin-bottom:5px;font-weight:600;}
-.f p{font-size:14.5px;color:var(--ink70);}
 
 .how{max-width:620px;margin:0 auto;}
 .step{display:flex;gap:15px;align-items:flex-start;margin-bottom:14px;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:16px;padding:16px 18px;}
@@ -147,11 +139,6 @@ input[type=range]{flex:1;accent-color:var(--pink);height:6px;}
 .mc h3{font-family:'Fredoka',sans-serif;font-size:17px;margin:8px 0 5px;font-weight:600;}
 .mc p{font-size:14px;color:var(--ink70);}
 
-/* onboarding cinematic */
-.cine{background:linear-gradient(160deg,#140C2E,#3A1055);border:1px solid var(--line);border-radius:24px;padding:30px 22px;text-align:center;max-width:560px;margin:0 auto;}
-.cine-badge{font-size:12px;letter-spacing:.22em;color:var(--gold);font-weight:800;margin-bottom:14px;}
-.cine-h{font-family:'Fredoka',sans-serif;font-size:24px;font-weight:700;background:linear-gradient(90deg,var(--gold),var(--pink));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:12px;line-height:1.3;}
-
 .pillrow{text-align:center;}
 .pill{display:inline-block;background:rgba(94,231,255,.1);border:1px solid rgba(94,231,255,.28);color:var(--cyan);border-radius:20px;padding:6px 13px;font-size:12.5px;font-weight:700;margin:3px;}
 
@@ -191,16 +178,6 @@ const T = {
     desc:"Çocuklar için oyunlaştırılmış görev ve ödül portalı. Günlük alışkanlıklar, öğrenme ve ekransız zaman birer maceraya dönüşür; toplanan yıldızlarla karatahtadaki gizemli ödül adım adım açılır.",
     cta:"Hemen başla ✨", ctaSub:"Aile hesabı ücretsiz · 2 dakikada kur",
 
-    featLead:"Tek bakışta", featH:"Çocuğun motivasyonu, ailenin kontrolü",
-    feats:[
-      ["⭐","Yıldız ekonomisi","Her görev yıldız kazandırır. Günlük seriler ve haftalık görevler büyük ödüle yaklaştırır."],
-      ["🧩","6 RPG dünyası","Galaktik kâşiften dino avcısına; çocuk kendi temasını seçer, arayüz ve görevler o dünyaya bürünür."],
-      ["🧠","Öğrenme sohbeti","Akıllı rehber, çocuğun o gün öğrendiğini kendi cümleleriyle anlatmasını ister. Ezber ve kopyala geçmez."],
-      ["✅","Aile onayı","Görevleri ebeveyn onaylar. Fotoğraf kanıtı, ara ödüller ve büyük ödül sizin elinizde."],
-      ["🔥","Seri, rütbe, rozet","Üst üste günler seri yapar, yıldızlar rütbe atlatır, başarımlar rozet kazandırır."],
-      ["🔒","Mahremiyet","Çocukların e-postası yok, reklam yok, veri satışı yok. Her aile yalnız kendi verisini görür."]
-    ],
-
     whyLead:"NEDEN İŞE YARIYOR", whyH:"Çocuğa 'yap' demeden, yapmak isteten tasarım",
     whySub:"Yıldız Avcıları rastgele bir oyun değil; çocuk psikolojisine, alışkanlık bilimine ve sağlıklı oyunlaştırmaya dayanır.",
     why:[
@@ -224,7 +201,7 @@ const T = {
     miles:[[0,"Gizemli ödül..."],[25,"Bir şeyler parıldıyor ✨"],[50,"Yarı yarıya yaklaştın!"],[75,"Neredeyse oldu..."],[100,"Büyük ödülü kazandın! 🎉"]],
     revHint:"Karne günü %100'e ulaşınca büyük ödül açılır. Ödülü aile belirler, çocuktan gizli kalır.",
 
-    cpLead:"Ara Ödüller", cpH:"Yolda küçük hedefler",
+    cpH:"Yolda küçük hedefler",
     cpSub:"Aile, büyük ödüle giderken çocuğa ara ödül noktaları koyar. Çocuk yıldız barında bunları görür, ulaşınca kutlama olur. Büyük ödül yine gizli kalır.",
     cpItems:[["🎯","500 ⭐","Sinema gecesi"],["🎯","1000 ⭐","Yeni kitap"],["🎯","1500 ⭐","Kablosuz kulaklık"]],
 
@@ -268,20 +245,13 @@ const T = {
       ["win","⭐ Harika anlattın, gerçekten öğrenmişsin! +150 Yıldız"]
     ],
 
-    motLead:"Motivasyon", motH:"Devam etmek için küçük dürtüler",
-    motSub:"Çocukları zorlamadan, oyunun kendi mekaniğiyle motive ederiz.",
+    motH:"Devam etmek için küçük dürtüler",
     mot:[
       ["🔥","Günlük seri","Aynı görevi üst üste yaptıkça seri büyür; 3. günden sonra her gün bonus yıldız."],
       ["🏅","Rütbe","Yıldız biriktikçe çocuk kendi temasında rütbe atlar: Çaylak'tan Efsane'ye."],
       ["🎖️","Rozetler","İlk hafta, 10 kitap, erken kuş... başarımlar koleksiyona eklenir."]
     ],
 
-    onbLead:"İlk Giriş", onbH:"Maceraya başlangıç",
-    onbSub:"Çocuk ilk girişte sinematik bir karşılama görür, bir dünya seçer ve rehber bot sistemi oyun gibi anlatır.",
-    cineBadge:"BÜYÜK KARNE SEZONU", cineH:"Hedefe giden yolda<br>kaderini seç...",
-    cineTxt:"Görevleri tamamla, gücünü topla, ödülü hak et.", cineSteps:"① Dünya seç → ② Rehber bot tanıtır → ③ Maceraya başla",
-
-    taskLead:"Görevler", taskH:"Günlük rutinler + haftalık hedefler",
     taskSub:"Zamanı gelince açılan, yaşa göre uyarlanan görevler. Aile dilediği çocuğa özel görev de tanımlayabilir.",
     pills:["🦷 Diş fırçalama","🛏️ Yatak toplama","💧 Su içme","🧼 El yıkama","🥗 Sağlıklı yemek","🏆 Spor","📚 Kitap okuma","📵 Ekransız mola","🧠 Öğrenme sohbeti","🤝 Yardım","✨ Özel görev"],
 
@@ -300,16 +270,6 @@ const T = {
     h1:'Do tasks,<br><em>collect the stars</em>,<br>unlock the reward!',
     desc:"A gamified task and reward portal for kids. Daily habits, learning and screen-free time turn into an adventure; collected stars slowly reveal the mystery reward on the board.",
     cta:"Get started ✨", ctaSub:"Free family account · set up in 2 minutes",
-
-    featLead:"At a glance", featH:"Motivation for kids, control for parents",
-    feats:[
-      ["⭐","Star economy","Every task earns stars. Daily streaks and weekly tasks move kids closer to the big reward."],
-      ["🧩","6 RPG worlds","From galactic explorer to dino hunter; the kid picks a theme and the whole interface and tasks transform into it."],
-      ["🧠","Learning chat","A smart guide asks the kid to explain what they learned in their own words. Memorizing and copy-paste don't pass."],
-      ["✅","Family approval","Parents approve tasks. Photo proof, milestone rewards and the big prize stay in your hands."],
-      ["🔥","Streaks, ranks, badges","Consecutive days build a streak, stars raise the rank, achievements earn badges."],
-      ["🔒","Privacy","Kids have no email, no ads, no data selling. Each family sees only its own data."]
-    ],
 
     whyLead:"WHY IT WORKS", whyH:"Built so kids want to, without being told to",
     whySub:"Yıldız Avcıları isn't a random game; it's grounded in child psychology, the science of habits, and responsible gamification.",
@@ -334,7 +294,7 @@ const T = {
     miles:[[0,"Mystery reward..."],[25,"Something is glowing ✨"],[50,"Halfway there!"],[75,"Almost there..."],[100,"You won the big reward! 🎉"]],
     revHint:"On report-card day, reaching 100% unlocks the big reward. The family sets the prize; it stays hidden from the kid.",
 
-    cpLead:"Milestone Rewards", cpH:"Small goals along the way",
+    cpH:"Small goals along the way",
     cpSub:"On the way to the big prize, the family sets intermediate reward points. The kid sees them on the star bar; reaching one triggers a celebration. The big prize stays hidden.",
     cpItems:[["🎯","500 ⭐","Movie night"],["🎯","1000 ⭐","New book"],["🎯","1500 ⭐","Wireless headphones"]],
 
@@ -378,20 +338,13 @@ const T = {
       ["win","⭐ Great explanation, you really learned it! +150 Stars"]
     ],
 
-    motLead:"Motivation", motH:"Small nudges to keep going",
-    motSub:"We motivate kids with the game's own mechanics, without pressure.",
+    motH:"Small nudges to keep going",
     mot:[
       ["🔥","Daily streak","Doing the same task on consecutive days builds a streak; after day 3, bonus stars every day."],
       ["🏅","Ranks","As stars add up, the kid ranks up within their theme: from Rookie to Legend."],
       ["🎖️","Badges","First week, 10 books, early bird... achievements join the collection."]
     ],
 
-    onbLead:"First Login", onbH:"Start of the adventure",
-    onbSub:"On first login the kid sees a cinematic welcome, picks a world, and a guide bot explains the system like a game tutorial.",
-    cineBadge:"THE GREAT REPORT-CARD SEASON", cineH:"On the road to the goal,<br>choose your destiny...",
-    cineTxt:"Complete tasks, gather your power, earn the reward.", cineSteps:"① Pick a world → ② Guide bot explains → ③ Begin the adventure",
-
-    taskLead:"Tasks", taskH:"Daily routines + weekly goals",
     taskSub:"Time-gated tasks, adapted to the kid's age. The family can also define custom tasks for any kid.",
     pills:["🦷 Brush teeth","🛏️ Make the bed","💧 Drink water","🧼 Wash hands","🥗 Healthy meal","🏆 Exercise","📚 Read a book","📵 Screen-free break","🧠 Learning chat","🤝 Help out","✨ Custom task"],
 
