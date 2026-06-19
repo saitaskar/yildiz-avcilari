@@ -201,6 +201,15 @@ const T = {
       ["🔒","Mahremiyet","Çocukların e-postası yok, reklam yok, veri satışı yok. Her aile yalnız kendi verisini görür."]
     ],
 
+    whyLead:"NEDEN İŞE YARIYOR", whyH:"Çocuğa 'yap' demeden, yapmak isteten tasarım",
+    whySub:"Yıldız Avcıları rastgele bir oyun değil; çocuk psikolojisine, alışkanlık bilimine ve sağlıklı oyunlaştırmaya dayanır.",
+    why:[
+      ["🧠","İçten motivasyon","Çocuk kendi dünyasını ve hedefini seçer, kendi ilerlemesini görür. Özerklik ve yetkinlik hissi, dıştan baskıdan çok daha kalıcı bir isteklilik yaratır."],
+      ["🔁","Alışkanlık tekrarla yerleşir","Her gün yapılan küçük görevler ve seriler davranışı zamanla doğallaştırır. Bir alışkanlığın oturması ortalama iki aya yakın sürer; sistem bu yolu görünür ve eğlenceli kılar."],
+      ["💛","Sonucu değil çabayı ödüllendiririz","Onaylar ve rehber botun mesajları 'ne kadar uğraştığını' över. Bu, çocuğun öğrenme isteğini ve özgüvenini korur."],
+      ["🛡️","Sağlıklı oyunlaştırma","Reklam yok, bağımlılık yapan rastgele ödül yok, veri satışı yok. Gerçek ödülü aile belirler, çocuk emekle hak eder."]
+    ],
+    whyRef:"Dayandığı ilkeler: Öz-Belirleme Kuramı (Deci & Ryan), <a href=\"https://onlinelibrary.wiley.com/doi/abs/10.1002/ejsp.674\" target=\"_blank\" rel=\"noopener\" style=\"color:inherit;text-decoration:underline\">alışkanlık oluşumu (Lally ve ark., 2010)</a>, çaba odaklı geri bildirim (Dweck).",
     howLead:"Nasıl Çalışır", howH:"Dört adımda ödüle",
     howSub:"Bir aile hesabı kurarsınız, çocuk profillerini eklersiniz. Görevler gerçek hayatta yapılır, kanıtı yüklenir, onaylanınca yıldız havuza düşer.",
     steps:[
@@ -302,6 +311,15 @@ const T = {
       ["🔒","Privacy","Kids have no email, no ads, no data selling. Each family sees only its own data."]
     ],
 
+    whyLead:"WHY IT WORKS", whyH:"Built so kids want to, without being told to",
+    whySub:"Yıldız Avcıları isn't a random game; it's grounded in child psychology, the science of habits, and responsible gamification.",
+    why:[
+      ["🧠","Intrinsic motivation","The kid picks their own world and goal and sees their own progress. A sense of autonomy and competence builds far more lasting willingness than outside pressure."],
+      ["🔁","Habits form through repetition","Small daily tasks and streaks gradually make behavior feel natural. A habit takes close to two months to settle; the system makes that journey visible and fun."],
+      ["💛","We reward effort, not just results","Approvals and the guide bot praise how hard the kid tried. That protects their desire to learn and their confidence."],
+      ["🛡️","Responsible gamification","No ads, no addictive random rewards, no data selling. The family sets the real reward; the kid earns it through effort."]
+    ],
+    whyRef:"Grounded in: Self-Determination Theory (Deci & Ryan), <a href=\"https://onlinelibrary.wiley.com/doi/abs/10.1002/ejsp.674\" target=\"_blank\" rel=\"noopener\" style=\"color:inherit;text-decoration:underline\">habit formation (Lally et al., 2010)</a>, effort-focused feedback (Dweck).",
     howLead:"How It Works", howH:"Four steps to the reward",
     howSub:"You create a family account and add child profiles. Tasks are done in real life, proof is uploaded, and once approved the stars drop into the pool.",
     steps:[
@@ -414,6 +432,18 @@ function render(){
       <div class="lead">${t.featLead}</div><div class="h2">${t.featH}</div>
       <div class="grid" style="margin-top:24px">
         ${t.feats.map(f=>`<div class="f"><span class="e">${f[0]}</span><h3>${f[1]}</h3><p>${f[2]}</p></div>`).join("")}
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="lead">${t.whyLead}</div><div class="h2">${t.whyH}</div>
+      <p class="sub">${t.whySub}</p>
+      <div style="max-width:640px;margin:0 auto">
+        ${t.why.map(w=>`<div style="display:flex;gap:14px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px 18px;margin-bottom:11px">
+          <div style="font-size:25px;line-height:1.1">${w[0]}</div>
+          <div><b style="font-family:'Fredoka',sans-serif;font-weight:600;font-size:15.5px">${w[1]}</b><div style="color:var(--ink70);font-size:14px;margin-top:3px">${w[2]}</div></div>
+        </div>`).join("")}
+        <p style="text-align:center;color:var(--ink55);font-size:11.5px;margin-top:16px;font-style:italic">${t.whyRef}</p>
       </div>
     </section>
 
