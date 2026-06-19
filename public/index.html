@@ -492,7 +492,7 @@ const THEMES = {
     }
   },
   ocean:{
-    id:"ocean", name:"Derin Deniz Kâşifi", cls:"Kâşif", ico:"🌊",
+    id:"ocean", name:"Derin Deniz Kâşifi", cls:"Kâşif", ico:"🌊", premium:true,
     colors:{"primary":"#22D3EE","primary-dark":"#0E7490","accent":"#FFC857","bg":"#06141F","card":"#0E2433","text":"#E2F6FF","muted":"#74A0B8","line":"#1B3A4B"},
     cardGrad:"linear-gradient(150deg,#072A3D,#0A4A63)",
     bot:{name:"Mercan", ico:"🐬"},
@@ -524,7 +524,7 @@ const THEMES = {
     }
   },
   hero:{
-    id:"hero", name:"Şehrin Kahramanı", cls:"Kahraman", ico:"🦸",
+    id:"hero", name:"Şehrin Kahramanı", cls:"Kahraman", ico:"🦸", premium:true,
     colors:{"primary":"#F43F5E","primary-dark":"#9F1239","accent":"#38BDF8","bg":"#0B0F1E","card":"#15203A","text":"#EAF0FF","muted":"#8194B8","line":"#243352"},
     cardGrad:"linear-gradient(150deg,#1E2A52,#7A1530)",
     bot:{name:"Vızıltı", ico:"🤖"},
@@ -556,7 +556,7 @@ const THEMES = {
     }
   },
   dino:{
-    id:"dino", name:"Dino Kâşifi", cls:"Dino Avcısı", ico:"🦕",
+    id:"dino", name:"Dino Kâşifi", cls:"Dino Avcısı", ico:"🦕", premium:true,
     colors:{"primary":"#F59E0B","primary-dark":"#B45309","accent":"#34D399","bg":"#0F1A0E","card":"#1B2A18","text":"#ECF6E1","muted":"#94A887","line":"#2C3D26"},
     cardGrad:"linear-gradient(150deg,#15280F,#3A2A0C)",
     bot:{name:"Rex", ico:"🦖"},
@@ -1207,16 +1207,18 @@ function wizIntro(){
     </div>`, true);
 }
 function wizClasses(){
-  const cards = Object.values(THEMES).map(t=>`
-    <div class="class-card" style="background:${t.cardGrad}" onclick="wizPick('${t.id}')">
+  const isPrem = !!(state && state.premium);
+  const cards = Object.values(THEMES).map(t=>{
+    const locked = t.premium && !isPrem;
+    return `<div class="class-card" style="background:${t.cardGrad};${locked?'opacity:.6;':''}" onclick="${locked?"toast('✨ Bu dünya yakında açılacak')":`wizPick('${t.id}')`}">
       <div class="cc-ico" style="background:rgba(0,0,0,.25)">${t.ico}</div>
       <div>
-        <div class="cc-class">${t.cls}</div>
+        <div class="cc-class">${t.cls}${locked?' 🔒':''}</div>
         <div class="cc-name">${t.name}</div>
-        <div class="cc-desc">${t.intro}</div>
+        <div class="cc-desc">${locked?'✨ Bu dünya yakında açılacak':t.intro}</div>
       </div>
-      <div class="cc-arrow">▸</div>
-    </div>`).join("");
+      <div class="cc-arrow">${locked?'🔒':'▸'}</div>
+    </div>`; }).join("");
   wizMount(`
     <h2 class="wiz-title">Sınıfını Seç</h2>
     <p class="wiz-sub">Her dünyanın kendi dili, renkleri ve kılavuzu var. Birini seç, panelin ona bürünsün.</p>

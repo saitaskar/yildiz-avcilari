@@ -24,6 +24,7 @@ const CONSENT_VERSION = "2026-06-18";  // kabul edilen Kosullar/Gizlilik surumu;
    Ucretsiz limitler. KULLANICIYA 'premium' DEME -> mesaj 'yakinda'. Gercek premium ileride. */
 const LIM_FROM = Date.parse("2026-06-19T00:00:00Z");
 const FREE = { families:1, children:2, parents:2, checkpoints:2, customTasks:4 };
+const PREMIUM_THEMES = ["ocean","hero","dino"];   // yeni 3 dunya premium; orijinal 3 (scifi/fantasy/pixel) ucretsiz
 
 function dayDiff(a,b){ return Math.round((Date.parse(b+"T00:00:00Z") - Date.parse(a+"T00:00:00Z"))/86400000); }
 /* bir gorevin gun listesinden seri bonusu: her ardisik kosuda (uzunluk L) max(0,L-(MIN-1)) gun x BONUS */
@@ -433,7 +434,8 @@ async function getState(env, me){
     }
   }
   chatLogs = chatLogs.map(l=>({ id:l.id, childId:l.child_id, messages:JSON.parse(l.messages||"[]"), result:l.result, ts:l.ts }));
-  return { season, users, completions, customTasks, checkpoints, rewards, chatLogs, family: fam?{id:fam.id, name:fam.name, code:fam.code}:null, me: safeUser(me) };
+  const premium = !(await famLimited(env, fid));   // grandfather/ileride-premium -> premium temalar acik
+  return { season, users, completions, customTasks, checkpoints, rewards, chatLogs, premium, family: fam?{id:fam.id, name:fam.name, code:fam.code}:null, me: safeUser(me) };
 }
 
 /* ====================== ROUTER ====================== */
@@ -1005,6 +1007,7 @@ export async function onRequest(context){
       if(me.role!=="child") return bad("Yetkisiz", 403);
       const { theme } = body;
       if(!["scifi","fantasy","pixel","ocean","hero","dino"].includes(theme)) return bad("Geçersiz tema");
+      if(PREMIUM_THEMES.includes(theme) && await famLimited(env, me.family_id)) return bad("Bu dünya yakında açılacak ✨", 403);
       await env.DB.prepare("UPDATE users SET theme=? WHERE id=?").bind(theme, me.id).run();
       return json({ ok:true });
     }
