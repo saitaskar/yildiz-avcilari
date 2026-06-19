@@ -19,6 +19,7 @@ const VAPID_SUBJECT = "mailto:yildiz@cryme.tr";
 const WEEKLY_TASKS = new Set(["ogren","ekransiz","fiziksel"]);  // gerisi gunluk
 const STREAK_MIN = 3;            // bir gunluk gorevi bu kadar gun ust uste yapinca bonus baslar
 const STREAK_BONUS = 5;          // her bonus gunu icin ekstra yildiz (gun 3'ten itibaren)
+const CONSENT_VERSION = "2026-06-18";  // kabul edilen Kosullar/Gizlilik surumu; materyal degisince yukselt (sunucu onam kaydi)
 
 function dayDiff(a,b){ return Math.round((Date.parse(b+"T00:00:00Z") - Date.parse(a+"T00:00:00Z"))/86400000); }
 /* bir gorevin gun listesinden seri bonusu: her ardisik kosuda (uzunluk L) max(0,L-(MIN-1)) gun x BONUS */
@@ -153,6 +154,12 @@ async function pushToUser(env, userId){
   const subs = (await env.DB.prepare("SELECT endpoint FROM push_subs WHERE user_id=?").bind(userId).all()).results||[];
   for(const s of subs) await sendPush(env, s);
 }
+/* hesap-tabanli ebeveyn cihazlarina push (push_subs.account_id ile anahtarli; user_id='') */
+async function pushToAccount(env, accountId){
+  if(!accountId) return;
+  const subs = (await env.DB.prepare("SELECT endpoint FROM push_subs WHERE account_id=?").bind(accountId).all()).results||[];
+  for(const s of subs) await sendPush(env, s);
+}
 /* cocugun onaylayicilarini bilgilendir (parents yoksa ailenin approver'lari; root'a ASLA gitmez) */
 async function notifyApprovers(env, child){
   let ids=[]; try{ ids = child.parents ? JSON.parse(child.parents) : []; }catch(e){}
@@ -161,6 +168,11 @@ async function notifyApprovers(env, child){
     ids=ap.map(a=>a.id);
   }
   for(const id of ids) await pushToUser(env, id);
+  // hesap-tabanli ebeveynler: cocugun ailesine bagli tum hesaplar (account_families role owner|parent, root yok)
+  if(child.family_id){
+    const accs=(await env.DB.prepare("SELECT account_id FROM account_families WHERE family_id=?").bind(child.family_id).all()).results||[];
+    for(const a of accs) await pushToAccount(env, a.account_id);
+  }
 }
 async function signToken(payload, secret){
   const data = b64url(enc.encode(JSON.stringify(payload)));
@@ -226,6 +238,8 @@ async function accountToken(env, accId){
 async function accountInFamily(env, accId, familyId){
   return await env.DB.prepare("SELECT role FROM account_families WHERE account_id=? AND family_id=?").bind(accId, familyId).first();
 }
+/* outbound e-posta HTML'ine giren kullanici metnini kacisla (HTML injection onler) */
+const escHtml = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 /* e-posta gonder (Resend; key yoksa dry-run false doner) */
 async function sendEmail(env, to, subject, html){
   if(!env.RESEND_API_KEY) return false;
@@ -466,6 +480,7 @@ export async function onRequest(context){
       const cutoff = Date.now() - 30*60*1000;   // >30 dk bekleyenler (anlik push'la cakismasin)
       const rows = (await env.DB.prepare("SELECT user_id, COUNT(*) n FROM completions WHERE status='pending' AND ts < ? GROUP BY user_id").bind(cutoff).all()).results||[];
       const approvers = new Set();
+      const accIds = new Set();
       for(const r of rows){
         const u = await env.DB.prepare("SELECT parents, family_id FROM users WHERE id=?").bind(r.user_id).first();
         let ps=[]; try{ ps = u && u.parents ? JSON.parse(u.parents) : []; }catch(e){}
@@ -474,9 +489,14 @@ export async function onRequest(context){
           ps=ap.map(a=>a.id);
         }
         ps.forEach(id=>approvers.add(id));
+        if(u && u.family_id){   // hesap-tabanli ebeveynler (account_families)
+          const accs=(await env.DB.prepare("SELECT account_id FROM account_families WHERE family_id=?").bind(u.family_id).all()).results||[];
+          accs.forEach(a=>accIds.add(a.account_id));
+        }
       }
       for(const id of approvers) await pushToUser(env, id);
-      return json({ ok:true, reminded: approvers.size });
+      for(const aid of accIds) await pushToAccount(env, aid);
+      return json({ ok:true, reminded: approvers.size + accIds.size });
     }
 
     /* ====================== HESAP (account) AUTH ====================== */
@@ -487,14 +507,15 @@ export async function onRequest(context){
       const name = String(body.name||"").trim().slice(0,60);
       if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return bad("Geçerli bir e-posta gir");
       if(pw.length<6) return bad("Parola en az 6 karakter olmalı");
+      if(body.consent!==true) return bad("Devam etmek için Koşullar ve Gizlilik Politikası'nı kabul et");
       if(await env.DB.prepare("SELECT id FROM accounts WHERE email=?").bind(email).first()) return bad("Bu e-posta zaten kayıtlı", 409);
       const ph = await hashPassword(pw);
       const id = "acc_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
       const nm = name || email.split("@")[0];
-      await env.DB.prepare("INSERT INTO accounts (id,email,email_verified,pw_hash,pw_salt,pw_iter,name,created_ts,last_login) VALUES (?,?,0,?,?,?,?,?,?)")
-        .bind(id, email, ph.hash, ph.salt, ph.iter, nm, Date.now(), Date.now()).run();
+      await env.DB.prepare("INSERT INTO accounts (id,email,email_verified,pw_hash,pw_salt,pw_iter,name,created_ts,last_login,consent_at,consent_version) VALUES (?,?,0,?,?,?,?,?,?,?,?)")
+        .bind(id, email, ph.hash, ph.salt, ph.iter, nm, Date.now(), Date.now(), Date.now(), CONSENT_VERSION).run();
       context.waitUntil(sendEmail(env, email, "Yıldız Avcıları'na hoş geldin! 🌟",
-        "<p>Merhaba "+nm+",</p><p>Yıldız Avcıları hesabın hazır. Ailenle başlamak için <a href=\""+appUrl+"\">giriş yap</a>, bir aile kur ve çocuk profillerini ekle.</p><p>İyi maceralar! 🌟</p>"));
+        "<p>Merhaba "+escHtml(nm)+",</p><p>Yıldız Avcıları hesabın hazır. Ailenle başlamak için <a href=\""+appUrl+"\">giriş yap</a>, bir aile kur ve çocuk profillerini ekle.</p><p>İyi maceralar! 🌟</p>"));
       return json({ token: await accountToken(env, id), account:{id, email, name:nm} });
     }
     /* --- giris (email + parola) --- */
@@ -530,8 +551,8 @@ export async function onRequest(context){
       let a = await env.DB.prepare("SELECT * FROM accounts WHERE google_sub=? OR email=?").bind(sub, email).first();
       if(!a){
         const id = "acc_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
-        await env.DB.prepare("INSERT INTO accounts (id,email,email_verified,google_sub,name,created_ts,last_login) VALUES (?,?,1,?,?,?,?)")
-          .bind(id, email, sub, info.name||email.split("@")[0], Date.now(), Date.now()).run();
+        await env.DB.prepare("INSERT INTO accounts (id,email,email_verified,google_sub,name,created_ts,last_login,consent_at,consent_version) VALUES (?,?,1,?,?,?,?,?,?)")
+          .bind(id, email, sub, info.name||email.split("@")[0], Date.now(), Date.now(), Date.now(), CONSENT_VERSION).run();
         a = {id, email, name: info.name||email.split("@")[0]};
       } else if(!a.google_sub){
         await env.DB.prepare("UPDATE accounts SET google_sub=?, email_verified=1, last_login=? WHERE id=?").bind(sub, Date.now(), a.id).run();
@@ -570,7 +591,7 @@ export async function onRequest(context){
       let a = await env.DB.prepare("SELECT * FROM accounts WHERE email=?").bind(email).first();
       if(!a){
         const id = "acc_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
-        await env.DB.prepare("INSERT INTO accounts (id,email,email_verified,name,created_ts,last_login) VALUES (?,?,1,?,?,?)").bind(id, email, email.split("@")[0], Date.now(), Date.now()).run();
+        await env.DB.prepare("INSERT INTO accounts (id,email,email_verified,name,created_ts,last_login,consent_at,consent_version) VALUES (?,?,1,?,?,?,?,?)").bind(id, email, email.split("@")[0], Date.now(), Date.now(), Date.now(), CONSENT_VERSION).run();
         a = {id, email, name: email.split("@")[0]};
       } else { await env.DB.prepare("UPDATE accounts SET email_verified=1, last_login=? WHERE id=?").bind(Date.now(), a.id).run(); }
       return json({ token: await accountToken(env, a.id), account:{id:a.id, email:a.email, name:a.name} });
@@ -715,25 +736,44 @@ export async function onRequest(context){
         if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return bad("Geçerli bir e-posta gir");
         const link = await accountInFamily(env, acc.id, body.familyId);
         if(!link) return bad("Yetkisiz", 403);
+        // cocuk daveti: kabul edildiginde olusturulacak cocuk profili davette tasinir
+        let cName=null, cAge=null, cAv=null;
+        if(r==="child"){
+          cName = String(body.childName||"").trim().slice(0,40);
+          if(!cName) return bad("Çocuğun adını gir");
+          cAge = parseInt(body.childAge)||null;
+          cAv = (body.childAv||"🙂").slice(0,4);
+        }
         const tok = genCode(20);
-        await env.DB.prepare("INSERT INTO family_invites (id,family_id,email,role,invited_by,token,status,ts) VALUES (?,?,?,?,?,?, 'pending', ?)")
-          .bind("inv_"+Date.now()+"_"+Math.floor(Math.random()*1e6), body.familyId, em, r, acc.id, tok, Date.now()).run();
+        await env.DB.prepare("INSERT INTO family_invites (id,family_id,email,role,invited_by,token,status,ts,child_name,child_age,child_av) VALUES (?,?,?,?,?,?, 'pending', ?,?,?,?)")
+          .bind("inv_"+Date.now()+"_"+Math.floor(Math.random()*1e6), body.familyId, em, r, acc.id, tok, Date.now(), cName, cAge, cAv).run();
         const inviteLink = appUrl+"/?invite="+tok;
+        const invMsg = r==="child"
+          ? "<p>Bir aileye katılıp <b>"+escHtml(cName)+"</b> adlı çocuğun profilini yönetmek üzere davet edildin.</p>"
+          : "<p>Bir aileye ebeveyn olarak davet edildin.</p>";
         context.waitUntil(sendEmail(env, em, "Yıldız Avcıları aile daveti ✉️",
-          "<p>Bir aileye "+(r==="child"?"çocuk":"ebeveyn")+" olarak davet edildin.</p><p>Kabul etmek için bu e-posta ile giriş yap / kayıt ol ve linke tıkla:</p><p><a href=\""+inviteLink+"\">Daveti kabul et</a></p>"));
+          invMsg+"<p>Kabul etmek için bu e-posta ile giriş yap / kayıt ol ve linke tıkla:</p><p><a href=\""+inviteLink+"\">Daveti kabul et</a></p>"));
         return json({ ok:true, inviteToken:tok, role:r });   // e-posta varsa gonderilir; yoksa link UI'da paylasilir
       }
-      // daveti kabul et (giris yapmis hesap aileye baglanir). Su an parent daveti; e-postali cocuk ileride.
+      // daveti kabul et (giris yapmis hesap aileye baglanir). parent + cocuk daveti (cocuk daveti profili olusturur).
       if(route==="account/accept-invite" && method==="POST"){
         const inv = await env.DB.prepare("SELECT * FROM family_invites WHERE token=? AND status='pending'").bind(String(body.token||"")).first();
         if(!inv) return bad("Davet bulunamadı veya kullanılmış", 404);
-        if(inv.role!=="parent") return bad("E-postalı çocuk daveti yakında; şimdilik e-postasız çocuk profili ekleyin", 400);
-        // davet, gonderildigi e-postaya BAGLI: linki ele geciren baskasi katilamaz (yetki yukseltme onler)
+        // davet, gonderildigi e-postaya BAGLI: linki ele geciren baskasi katilamaz (parent + cocuk icin de; yetki yukseltme onler)
         if(!acc.email || String(inv.email).toLowerCase() !== String(acc.email).toLowerCase())
           return bad("Bu davet bu hesaba ait değil. Davetin gönderildiği e-posta ile giriş yap.", 403);
+        // atomik kilit: yalniz pending->accepted'i ceviren istek devam eder (cift-gonderim/yaris -> tek cocuk profili)
+        const claim = await env.DB.prepare("UPDATE family_invites SET status='accepted' WHERE id=? AND status='pending'").bind(inv.id).run();
+        if(!claim.meta || !claim.meta.changes) return bad("Davet zaten kullanılmış", 409);
+        // davetli hesap aileye ebeveyn olarak baglanir (cocuk profili yonetir; ayri cocuk-hesap bagi yok)
         await env.DB.prepare("INSERT OR IGNORE INTO account_families (account_id,family_id,role,added_ts) VALUES (?,?,'parent',?)").bind(acc.id, inv.family_id, Date.now()).run();
-        await env.DB.prepare("UPDATE family_invites SET status='accepted' WHERE id=?").bind(inv.id).run();
-        return json({ ok:true, familyId: inv.family_id });
+        let childId = null;
+        if(inv.role==="child" && inv.child_name){   // davetteki profil bilgisinden e-postasiz cocuk olustur
+          childId = "u_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
+          await env.DB.prepare("INSERT INTO users (id,role,name,age,pin,av,family_id) VALUES (?,'child',?,?,?,?,?)")
+            .bind(childId, String(inv.child_name).slice(0,40), inv.child_age||null, "", (inv.child_av||"🙂").slice(0,4), inv.family_id).run();
+        }
+        return json({ ok:true, familyId: inv.family_id, childId });
       }
 
       // ebeveyn: geri bildirim (degerlendirme/oneri/ariza); iletisim icin hesap e-postasi (gonullu)
@@ -743,6 +783,19 @@ export async function onRequest(context){
         const fid = (body.familyId && await accountInFamily(env, acc.id, body.familyId)) ? body.familyId : null;
         await env.DB.prepare("INSERT INTO feedback (id,family_id,kind,ref_id,theme,type,rating,message,contact,ts) VALUES (?,?,'parent',?,NULL,?,?,?,?,?)")
           .bind("fb_"+Date.now()+"_"+Math.floor(Math.random()*1e6), fid, acc.id, t, r, String(body.message||"").slice(0,1000), acc.email||null, Date.now()).run();
+        return json({ ok:true });
+      }
+
+      // ebeveyn (hesap): web push aboneligi - account_id ile anahtarlanir (user_id='')
+      if(route==="account/push-subscribe" && method==="POST"){
+        const sub = body.subscription || {};
+        if(!sub || !sub.endpoint) return bad("subscription gerekli");
+        const keys = sub.keys || {};
+        const fid = (body.familyId && await accountInFamily(env, acc.id, body.familyId)) ? body.familyId : null;
+        await env.DB.prepare(
+          "INSERT INTO push_subs (id,user_id,account_id,endpoint,p256dh,auth,ts,family_id) VALUES (?,'',?,?,?,?,?,?) "+
+          "ON CONFLICT(endpoint) DO UPDATE SET account_id=excluded.account_id, user_id='', p256dh=excluded.p256dh, auth=excluded.auth, ts=excluded.ts, family_id=excluded.family_id"
+        ).bind("ps_"+Date.now()+"_"+Math.floor(Math.random()*1e6), acc.id, sub.endpoint, keys.p256dh||"", keys.auth||"", Date.now(), fid).run();
         return json({ ok:true });
       }
 
@@ -786,8 +839,8 @@ export async function onRequest(context){
       if(!sub || !sub.endpoint) return bad("subscription gerekli");
       const keys = sub.keys || {};
       await env.DB.prepare(
-        "INSERT INTO push_subs (id,user_id,endpoint,p256dh,auth,ts,family_id) VALUES (?,?,?,?,?,?,?) "+
-        "ON CONFLICT(endpoint) DO UPDATE SET user_id=excluded.user_id, p256dh=excluded.p256dh, auth=excluded.auth, ts=excluded.ts, family_id=excluded.family_id"
+        "INSERT INTO push_subs (id,user_id,account_id,endpoint,p256dh,auth,ts,family_id) VALUES (?,?,NULL,?,?,?,?,?) "+
+        "ON CONFLICT(endpoint) DO UPDATE SET user_id=excluded.user_id, account_id=NULL, p256dh=excluded.p256dh, auth=excluded.auth, ts=excluded.ts, family_id=excluded.family_id"
       ).bind("ps_"+Date.now()+"_"+Math.floor(Math.random()*1e6), me.id, sub.endpoint, keys.p256dh||"", keys.auth||"", Date.now(), me.family_id).run();
       return json({ ok:true });
     }
@@ -916,7 +969,7 @@ export async function onRequest(context){
     if(route==="theme" && method==="POST"){
       if(me.role!=="child") return bad("Yetkisiz", 403);
       const { theme } = body;
-      if(!["scifi","fantasy","pixel","ocean","hero"].includes(theme)) return bad("Geçersiz tema");
+      if(!["scifi","fantasy","pixel","ocean","hero","dino"].includes(theme)) return bad("Geçersiz tema");
       await env.DB.prepare("UPDATE users SET theme=? WHERE id=?").bind(theme, me.id).run();
       return json({ ok:true });
     }

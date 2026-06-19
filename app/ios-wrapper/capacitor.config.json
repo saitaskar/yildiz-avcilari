@@ -1,0 +1,13 @@
+{
+  "appId": "com.yildizavcilari.app",
+  "appName": "Yıldız Avcıları",
+  "webDir": "www",
+  "server": {
+    "url": "https://yildizavcilari.com",
+    "allowNavigation": ["yildizavcilari.com", "www.yildizavcilari.com", "accounts.google.com"]
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "backgroundColor": "#0E0A2A"
+  }
+}

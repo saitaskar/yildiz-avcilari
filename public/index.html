@@ -553,6 +553,38 @@ const THEMES = {
       sofra:{title:"Üs Görevi", sub:"Sofrayı kur ve topla"},
       kitap:{title:"Bilgi Gücü", sub:"20 dk oku, bilgi gücünü artır"},
     }
+  },
+  dino:{
+    id:"dino", name:"Dino Kâşifi", cls:"Dino Avcısı", ico:"🦕",
+    colors:{"primary":"#F59E0B","primary-dark":"#B45309","accent":"#34D399","bg":"#0F1A0E","card":"#1B2A18","text":"#ECF6E1","muted":"#94A887","line":"#2C3D26"},
+    cardGrad:"linear-gradient(150deg,#15280F,#3A2A0C)",
+    bot:{name:"Rex", ico:"🦖"},
+    intro:"Toprağın altında milyonlarca yıllık altın bir dino yumurtası saklı. Onu gün yüzüne çıkarmak için her gün kazı yapan cesur bir dino avcısı ol.",
+    story:"Bir dino avcısısın. Karatahtadaki siluet, toprağın derinindeki altın yumurta. Onu çıkarmak için her gün kazını sürdür, gücünü topla.",
+    prize:"Altın Dino Yumurtası", revealLabel:"YUMURTA ÇATLADI! Dino senin 🦖",
+    approval:"Kazı Ekibi onayı bekleniyor",
+    miles:{0:"Toprak sessiz...",25:"Bir fosil ucu göründü 🦴",50:"Yumurta yarı çıktı!",75:"Kabuk çatlıyor...",100:"ALTIN YUMURTA ÇIKTI 🥚"},
+    tut:[
+      "Merhaba kâşif! Ben Rex, kazı yoldaşın küçük dino. Büyük Karne Sezonu başladı ve toprağın altındaki altın yumurtayı bulma görevi sana düştü.",
+      "Her gün küçük kazılar (görevler) yaparsın: alet hazırla, erzak topla. Kanıtını yollarsın, Kazı Ekibi (ailen) onaylar ve yumurtaya yaklaşırsın.",
+      "Kazıların saatleri var, zamanı gelince açılır. Haftada bir keşif günlüğü yazarsın. Cesaret doldukça yumurta belirir. Kazıya hazır mısın?"
+    ],
+    tasks:{
+      ogren:{title:"Kazı Günlüğü", sub:"Bugün öğrendiğini kazı defterine yaz"},
+      ekransiz:{title:"Sessiz Kazı", sub:"1 saat ekransız: kitap, maket, kazı oyunu"},
+      fiziksel:{title:"Avcı Antrenmanı", sub:"Bedenini araziye hazırla, hareket et"},
+      yatak:{title:"Kamp Düzeni", sub:"Çadırını/odanı topla, kampı hazırla"},
+      dis_sabah:{title:"Dev Diş Bakımı · sabah", sub:"Dişlerini dino dişi gibi parlat"},
+      dis_aksam:{title:"Dev Diş Bakımı · gece", sub:"Dişlerini dino dişi gibi parlat"},
+      el:{title:"Çamur Temizliği", sub:"Ellerini yıka, fosil tozunu temizle"},
+      su:{title:"Su Matarası", sub:"Mataranı doldur (su iç)"},
+      banyo:{title:"Nehir Banyosu", sub:"Tüm vücudu temizle (banyo)"},
+      kahvalti:{title:"Sabah Erzakı", sub:"Kazı enerjini topla"},
+      ogle:{title:"Öğlen Erzakı", sub:"Kazı enerjini topla"},
+      aksam:{title:"Akşam Erzakı", sub:"Kazı enerjini topla"},
+      sofra:{title:"Kamp Sofrası", sub:"Sofrayı kur ve topla"},
+      kitap:{title:"Dino Atlası", sub:"20 dk kitap oku, dinoları keşfet"},
+    }
   }
 };
 const DEFAULT_COLORS={"primary":"#6C2BD9","primary-dark":"#4A148C","accent":"#FF7A18","bg":"#F4F1FB","card":"#FFFFFF","text":"#1F1235","muted":"#7A6F94","line":"#E7E0F5"};
@@ -772,6 +804,7 @@ const RANKS = {
   pixel:["Yeni Oyuncu","Madenci","İnşaatçı","Mimar","Usta","Efsane"],
   ocean:["Yüzücü","Dalgıç","Kâşif","Derin Dalgıç","Deniz Kaptanı","Okyanus Efsanesi"],
   hero:["Çaylak","Çırak Kahraman","Koruyucu","Kahraman","Süper Kahraman","Efsane"],
+  dino:["Çaylak Kazıcı","İz Sürücü","Dino Avcısı","Kâşif","Usta Paleontolog","Dino Efsanesi"],
   default:["Başlangıç","Acemi","Gözde","Uzman","Şampiyon","Efsane"]
 };
 function userRank(xp, themeId){
@@ -851,7 +884,8 @@ async function submitAuth(){
   if(authTab==="signup" && !document.getElementById("authConsent").checked){ err.textContent="Devam etmek için Koşullar ve Gizlilik'i kabul et"; return; }
   err.textContent="Lütfen bekle...";
   try{
-    const d = await api(authTab==="signup"?"/auth/register":"/auth/login", {method:"POST", body:{email, password:pass, name}});
+    const reqBody = authTab==="signup" ? {email, password:pass, name, consent:true} : {email, password:pass};   // consent: checkbox yukarida gate'li
+    const d = await api(authTab==="signup"?"/auth/register":"/auth/login", {method:"POST", body:reqBody});
     onAccountAuthed(d);
   }catch(e){ err.textContent = e.message || "Giriş başarısız"; }
 }
@@ -1022,20 +1056,42 @@ async function addChild(familyId){
   catch(e){ document.getElementById("chErr").textContent=e.message; }
 }
 let invRole="parent";
+function invSetRole(r){
+  invRole=r;
+  document.getElementById("invP").classList.toggle("active", r==="parent");
+  document.getElementById("invC").classList.toggle("active", r==="child");
+  const cf=document.getElementById("invChildFields"); if(cf) cf.classList.toggle("hidden", r!=="child");
+}
 function invitePrompt(familyId){
   invRole="parent";
   showModal(`<h3>Aileye davet</h3>
     <div class="sub">${appConfig.emailCode?'Davet e-postayla gönderilir.':'E-posta servisi kapalı; davet linkini sen paylaşırsın.'}</div>
     <input id="invEmail" type="email" placeholder="E-posta" style="width:100%;box-sizing:border-box;padding:12px;border:2px solid var(--line);border-radius:10px;margin:8px 0">
-    <div class="seg" style="margin-bottom:8px"><button id="invP" class="active" onclick="invRole='parent';this.classList.add('active');document.getElementById('invC').classList.remove('active')">Ebeveyn</button><button id="invC" onclick="invRole='child';this.classList.add('active');document.getElementById('invP').classList.remove('active')">Çocuk</button></div>
+    <div class="seg" style="margin-bottom:8px"><button id="invP" class="active" onclick="invSetRole('parent')">Ebeveyn</button><button id="invC" onclick="invSetRole('child')">Çocuk</button></div>
+    <div id="invChildFields" class="hidden">
+      <div class="sub" style="margin:2px 0 6px">Davet edilen kişi aileye katılıp aşağıdaki çocuğun profilini yönetecek:</div>
+      <input id="invChildName" placeholder="Çocuğun adı" style="width:100%;box-sizing:border-box;padding:12px;border:2px solid var(--line);border-radius:10px;margin-bottom:8px">
+      <div style="display:flex;gap:8px">
+        <input id="invChildAge" inputmode="numeric" placeholder="Yaş" style="flex:1;min-width:0;box-sizing:border-box;padding:12px;border:2px solid var(--line);border-radius:10px;margin-bottom:8px">
+        <input id="invChildAv" placeholder="Emoji" maxlength="2" value="🙂" style="flex:1;min-width:0;box-sizing:border-box;padding:12px;border:2px solid var(--line);border-radius:10px;margin-bottom:8px;text-align:center">
+      </div>
+    </div>
     <div class="pin-err" id="invErr"></div>
     <button class="btn-primary" style="width:100%" onclick="sendInvite('${familyId}')">Davet et</button>`);
 }
 async function sendInvite(familyId){
   const email=document.getElementById("invEmail").value.trim().toLowerCase();
   if(!email){ document.getElementById("invErr").textContent="E-posta gir"; return; }
+  const payload={familyId,email,role:invRole};
+  if(invRole==="child"){
+    const cn=document.getElementById("invChildName").value.trim();
+    if(!cn){ document.getElementById("invErr").textContent="Çocuğun adını gir"; return; }
+    payload.childName=cn;
+    payload.childAge=document.getElementById("invChildAge").value.trim();
+    payload.childAv=document.getElementById("invChildAv").value.trim()||"🙂";
+  }
   try{
-    const d=await api("/account/invite",{method:"POST",body:{familyId,email,role:invRole}});
+    const d=await api("/account/invite",{method:"POST",body:payload});
     await loadAccount(); renderAccountHome();
     const link = location.origin+"/?invite="+d.inviteToken;
     showModal(`<div style="text-align:center"><div style="font-size:38px">✉️</div><h3>Davet hazır</h3>
@@ -1453,6 +1509,13 @@ function showAiReject(note){
    Yeni ozellik eklenince buraya bir kayit ekle. audience: child | parent | all.
    Cocuga tema botu diliyle, aileye bilgilendirici; her kullaniciya bir kez. */
 const ANNOUNCEMENTS = [
+  { id:"2026-06-19-dino", audience:"child", confetti:true, emoji:"🦕", title:"Yeni Dünya: Dino Kâşifi! 🦖",
+    items:["🦕 Artık yeni bir dünya seçebilirsin: Dino Kâşifi! Toprağın altındaki altın yumurtayı kazıp çıkar.",
+           "🦖 Rehberin küçük dino Rex sana yol gösterecek.",
+           "🎨 Dünyanı değiştirmek istersen rütbe/seviye rozetine dokun, oradan yeni dünyayı seç. İlerlemen korunur."] },
+  { id:"2026-06-19-dino-aile", audience:"parent", emoji:"🦕", title:"Yeni tema: Dino Kâşifi",
+    items:["🦕 Çocuklar için 6. RPG dünyası eklendi: Dino Kâşifi (kazı/dinozor temalı).",
+           "🎨 Çocuk dilerse dünya seçiminden yeni temaya geçebilir; topladığı yıldızlar korunur."] },
   { id:"2026-06-11-c3-kulaklik", audience:"child", to:["c3"], confetti:true, emoji:"🎧", title:"Kablosuz Kulaklığını kazandın! 🎉",
     items:["🏆 1500 ⭐ hedefine ulaştın ve ara ödülünü hak ettin: Kablosuz Kulaklık! 🎧",
            "📦 En kısa zamanda sana göndereceğiz, hazır ol!",
@@ -1616,6 +1679,9 @@ const LEARN_HELLO = {
   scifi:"Selam Kaptan! 🚀 Bugün hangi yeni bilgiyi keşfettin? Anlat bakalım.",
   fantasy:"Selam genç şövalye! ⚔️ Bugün öğrendiğin kadim bilgiyi paylaş benimle.",
   pixel:"Hey usta! 🧱 Bugün kafanda ne craft ettin, yeni ne öğrendin?",
+  ocean:"Merhaba kâşif! 🌊 Bugün denizden ya da başka bir şeyden ne öğrendin, anlat bakalım.",
+  hero:"Selam kahraman! 🦸 Bugün öğrendiğin yeni şeyi anlat, gücüne güç kat.",
+  dino:"Merhaba kâşif! 🦕 Bugün hangi yeni şeyi keşfettin, kazı defterine yazalım mı?",
   default:"Selam! Bugün yeni ne öğrendin? Anlat bakalım."
 };
 const LEARN_MOOD = {
@@ -1623,7 +1689,8 @@ const LEARN_MOOD = {
   fantasy:"Fantastik diyar/şövalye temasında konuş, 'genç şövalye/kaşif' gibi hitap et.",
   pixel:"Piksel/oyun (Minecraft tarzı) temasında konuş, 'usta' diye hitap et.",
   ocean:"Derin deniz/dalış temasında konuş, 'kâşif' diye hitap et, deniz benzetmeleri kullan.",
-  hero:"Süper kahraman temasında konuş, 'kahraman' diye hitap et, cesaret ve iyilik vurgula."
+  hero:"Süper kahraman temasında konuş, 'kahraman' diye hitap et, cesaret ve iyilik vurgula.",
+  dino:"Dinozor/kazı temasında konuş, 'kâşif' diye hitap et, fosil ve macera benzetmeleri kullan."
 };
 let chatMessages = [];
 let chatBusy = false;
@@ -2155,7 +2222,6 @@ function urlB64ToUint8(s){
 }
 /* ebeveyn/admin: bildirim butonu durumu */
 function notifBtnHTML(){
-  if(authMode==="parent") return "";   // hesap-modu push'u henuz yok (account token user uci kabul etmez)
   if(!pushSupported()) return "";   // tarayici desteklemiyor ( or. iOS Safari sekmesi)
   const on = Notification.permission==="granted";
   return `<button class="btn-ghost" id="pushBtn" style="width:100%;margin-top:10px" onclick="enablePush()">
@@ -2172,7 +2238,9 @@ async function enablePush(){
     if(!reg){ toast("Bildirim kurulamadı"); return; }
     let sub = await reg.pushManager.getSubscription();
     if(!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:urlB64ToUint8(VAPID_PUBLIC) });
-    await api("/push-subscribe", {method:"POST", body:{ subscription: sub.toJSON() }});
+    // hesap-modu (parent): account_id ile anahtarlanan account/push-subscribe ucuna (pwrite /account ekler + familyId enjekte eder); aksi halde user token'la /push-subscribe
+    if(authMode==="parent") await pwrite("/push-subscribe", { subscription: sub.toJSON() });
+    else await api("/push-subscribe", {method:"POST", body:{ subscription: sub.toJSON() }});
     toast("Bildirimler açıldı 🔔");
     const b=document.getElementById("pushBtn"); if(b) b.textContent="🔔 Bildirimler açık";
   }catch(e){ toast("Hata: "+e.message); }

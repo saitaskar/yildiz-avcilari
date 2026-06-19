@@ -1,0 +1,38 @@
+# Codemagic CI — Yıldız Avcıları iOS wrapper'ını bulut Mac'te derler (yerel Mac gerekmez).
+# Tek seferlik kurulum (Apple Developer hesabı aktif olunca):
+#   1. codemagic.io -> GitHub ile kayıt ol -> yildiz-avcilari repo'sunu ekle
+#   2. Teams > Integrations > App Store Connect: appstoreconnect.apple.com
+#      (Users and Access > Keys) bir API key oluştur, Codemagic'e yapıştır
+#   3. Codemagic > app settings > iOS code signing: "Automatic" + bu key
+#   4. Bu workflow'u çalıştır; çıktı doğrudan TestFlight'a yüklenir
+workflows:
+  ios-wrapper:
+    name: Yildiz iOS
+    working_directory: app/ios-wrapper
+    max_build_duration: 45
+    integrations:
+      app_store_connect: yildiz_asc_key   # 2. adımda API key'e verdiğin ad
+    environment:
+      node: 20
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.yildizavcilari.app
+    scripts:
+      - name: Install deps
+        script: |
+          npm install
+          mkdir -p www && echo '<meta http-equiv="refresh" content="0;url=https://yildizavcilari.com">' > www/index.html
+      - name: Add iOS platform
+        script: npx cap add ios || npx cap sync ios
+      - name: Build & sign
+        script: |
+          xcode-project use-profiles
+          xcode-project build-ipa --workspace ios/App/App.xcworkspace --scheme App
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true

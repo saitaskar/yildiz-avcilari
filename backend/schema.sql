@@ -29,7 +29,9 @@ CREATE TABLE accounts (
   google_sub     TEXT UNIQUE,
   name           TEXT,
   created_ts     INTEGER NOT NULL,
-  last_login     INTEGER
+  last_login     INTEGER,
+  consent_at     INTEGER,                 -- onam zaman damgasi (KVKK/GDPR; migration 006)
+  consent_version TEXT                    -- kabul edilen Kosullar/Gizlilik surumu
 );
 -- account <-> family (cok-aile/cok-ebeveyn): role owner|parent
 CREATE TABLE account_families (
@@ -50,7 +52,10 @@ CREATE TABLE family_invites (
   invited_by TEXT,
   token      TEXT NOT NULL UNIQUE,
   status     TEXT NOT NULL DEFAULT 'pending',
-  ts         INTEGER NOT NULL
+  ts         INTEGER NOT NULL,
+  child_name TEXT,                        -- cocuk daveti: kabulde olusturulacak profil (migration 005)
+  child_age  INTEGER,
+  child_av   TEXT
 );
 CREATE INDEX idx_inv_family ON family_invites(family_id);
 CREATE INDEX idx_inv_email  ON family_invites(email);
@@ -184,7 +189,8 @@ CREATE INDEX idx_rewards_user ON rewards_log(user_id);
 -- Web push abonelikleri (ebeveyn cihazlari; anlik onay-bekliyor bildirimi)
 CREATE TABLE push_subs (
   id        TEXT PRIMARY KEY,
-  user_id   TEXT NOT NULL,
+  user_id   TEXT NOT NULL,              -- legacy approver/cocuk; hesap aboneliginde '' (migration 004)
+  account_id TEXT,                       -- hesap-tabanli ebeveyn (account_families)
   endpoint  TEXT NOT NULL,
   p256dh    TEXT,
   auth      TEXT,
@@ -193,6 +199,7 @@ CREATE TABLE push_subs (
 );
 CREATE UNIQUE INDEX idx_push_endpoint ON push_subs(endpoint);
 CREATE INDEX idx_push_user ON push_subs(user_id);
+CREATE INDEX idx_push_account ON push_subs(account_id);
 
 -- Geri bildirim (aile + cocuk ayri; root anonim gorur)
 CREATE TABLE feedback (

@@ -5,10 +5,10 @@
 export default {
   async scheduled(event, env, ctx){
     ctx.waitUntil(
-      fetch("https://yildizavcilari.cryme.tr/api/cron-remind", {
+      fetch((env.CRON_TARGET || "https://yildizavcilari.com/api/cron-remind"), {
         method: "POST",
         headers: { "X-Cron-Secret": env.CRON_SECRET || "" }
-      }).catch(() => {})
+      }).catch((e) => { console.error("cron-remind tetiklenemedi:", e && e.message); })
     );
   }
 };
