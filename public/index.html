@@ -286,7 +286,6 @@
         <button id="tabLogin" class="active" onclick="setAuthTab('login')">Giriş</button>
         <button id="tabSignup" onclick="setAuthTab('signup')">Kayıt ol</button>
       </div>
-      <div id="authGoogle"></div>
       <input id="authName" class="hidden" placeholder="Adın" autocomplete="name"
         style="width:100%;box-sizing:border-box;padding:13px;font-size:15px;border:2px solid var(--line);border-radius:12px;margin-bottom:10px">
       <input id="authEmail" type="email" placeholder="E-posta" autocomplete="email" inputmode="email"
@@ -299,7 +298,9 @@
       </label>
       <div class="pin-err" id="authErr"></div>
       <button class="btn-primary" style="width:100%" id="authSubmit" onclick="submitAuth()">Giriş yap</button>
-      <button class="btn-ghost hidden" id="authEmailCodeBtn" style="width:100%;margin-top:10px" onclick="startEmailCode()">✉️ Parola yerine e-postama kod gönder</button>
+      <div id="authAltDivider" style="display:flex;align-items:center;gap:10px;margin:16px 2px 12px;color:var(--muted);font-size:12.5px"><span style="flex:1;height:1px;background:var(--line)"></span>ya da<span style="flex:1;height:1px;background:var(--line)"></span></div>
+      <div id="authGoogle" style="display:flex;justify-content:center"></div>
+      <button class="btn-ghost hidden" id="authEmailCodeBtn" style="width:100%;margin-top:10px" onclick="startEmailCode()">✉️ E-postama kod gönder</button>
       <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--line);text-align:center;font-size:11px;color:var(--muted);line-height:1.9">
         <a href="/tanitim.html" style="color:var(--muted)">Hakkında</a> ·
         <a href="/gizlilik.html" style="color:var(--muted)">Gizlilik</a> ·
@@ -873,6 +874,7 @@ function setAuthTab(t){
 async function loadConfig(){
   try{ appConfig = await api("/config"); }catch(e){ appConfig={google:false,emailCode:false}; }
   const ec=document.getElementById("authEmailCodeBtn"); if(ec) ec.classList.toggle("hidden", !appConfig.emailCode);
+  const dv=document.getElementById("authAltDivider"); if(dv) dv.classList.toggle("hidden", !((appConfig.google&&appConfig.googleClientId)||appConfig.emailCode));
   if(appConfig.google && appConfig.googleClientId) initGoogle(appConfig.googleClientId);
 }
 async function submitAuth(){
@@ -908,8 +910,8 @@ function initGoogle(clientId){
   const s=document.createElement("script"); s.src="https://accounts.google.com/gsi/client"; s.async=true; s.defer=true;
   s.onload=()=>{ try{
     google.accounts.id.initialize({ client_id:clientId, callback:onGoogleCredential });
-    google.accounts.id.renderButton(mount, { theme:"outline", size:"large", width:300, text:"continue_with" });
-    mount.style.marginBottom="12px"; _googleInited=true;
+    google.accounts.id.renderButton(mount, { theme:"outline", size:"large", width:360, text:"continue_with", shape:"pill", locale:"tr" });
+    _googleInited=true;
   }catch(e){} };
   document.head.appendChild(s);
 }
