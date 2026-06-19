@@ -251,6 +251,38 @@ async function famLimited(env, familyId){
   return !!(f && f.created_ts && f.created_ts >= LIM_FROM);
 }
 async function cnt(env, sql, ...args){ const r = await env.DB.prepare(sql).bind(...args).first(); return (r && r.n) || 0; }
+/* bir cocugun TUM verisini sil (DB satirlari + R2 kanit fotolari). Geri alinamaz. */
+async function deleteChildData(env, childId){
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM completions WHERE user_id=?").bind(childId),
+    env.DB.prepare("DELETE FROM custom_tasks WHERE child_id=?").bind(childId),
+    env.DB.prepare("DELETE FROM checkpoints WHERE child_id=?").bind(childId),
+    env.DB.prepare("DELETE FROM chat_logs WHERE child_id=?").bind(childId),
+    env.DB.prepare("DELETE FROM rewards_log WHERE user_id=?").bind(childId),
+    env.DB.prepare("DELETE FROM push_subs WHERE user_id=?").bind(childId),
+    env.DB.prepare("DELETE FROM users WHERE id=? AND role='child'").bind(childId),
+  ]);
+  try{ let cursor; do{ const l = await env.PROOFS.list({ prefix:"proofs/"+childId+"/", cursor }); for(const o of (l.objects||[])) await env.PROOFS.delete(o.key); cursor = l.truncated ? l.cursor : null; } while(cursor); }catch(e){}
+}
+/* bir ailenin TUM verisini sil (cocuklar + aile-kapsamli satirlar). Geri alinamaz. */
+async function deleteFamilyData(env, familyId){
+  const kids = (await env.DB.prepare("SELECT id FROM users WHERE family_id=? AND role='child'").bind(familyId).all()).results||[];
+  for(const k of kids) await deleteChildData(env, k.id);
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM completions WHERE family_id=?").bind(familyId),
+    env.DB.prepare("DELETE FROM custom_tasks WHERE family_id=?").bind(familyId),
+    env.DB.prepare("DELETE FROM checkpoints WHERE family_id=?").bind(familyId),
+    env.DB.prepare("DELETE FROM chat_logs WHERE family_id=?").bind(familyId),
+    env.DB.prepare("DELETE FROM rewards_log WHERE family_id=?").bind(familyId),
+    env.DB.prepare("DELETE FROM seasons WHERE family_id=?").bind(familyId),
+    env.DB.prepare("DELETE FROM feedback WHERE family_id=?").bind(familyId),
+    env.DB.prepare("DELETE FROM family_invites WHERE family_id=?").bind(familyId),
+    env.DB.prepare("DELETE FROM push_subs WHERE family_id=?").bind(familyId),
+    env.DB.prepare("DELETE FROM account_families WHERE family_id=?").bind(familyId),
+    env.DB.prepare("DELETE FROM users WHERE family_id=?").bind(familyId),
+    env.DB.prepare("DELETE FROM families WHERE id=?").bind(familyId),
+  ]);
+}
 /* outbound e-posta HTML'ine giren kullanici metnini kacisla (HTML injection onler) */
 const escHtml = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 /* e-posta gonder (Resend; key yoksa dry-run false doner) */
@@ -833,6 +865,37 @@ export async function onRequest(context){
           "INSERT INTO push_subs (id,user_id,account_id,endpoint,p256dh,auth,ts,family_id) VALUES (?,'',?,?,?,?,?,?) "+
           "ON CONFLICT(endpoint) DO UPDATE SET account_id=excluded.account_id, user_id='', p256dh=excluded.p256dh, auth=excluded.auth, ts=excluded.ts, family_id=excluded.family_id"
         ).bind("ps_"+Date.now()+"_"+Math.floor(Math.random()*1e6), acc.id, sub.endpoint, keys.p256dh||"", keys.auth||"", Date.now(), fid).run();
+        return json({ ok:true });
+      }
+
+      // ebeveyn: cocuk profilini + tum ilerlemesini sil (aile uyesi yetkisi)
+      if(route==="account/delete-child" && method==="POST"){
+        const ch = await env.DB.prepare("SELECT family_id FROM users WHERE id=? AND role='child'").bind(body.childId).first();
+        if(!ch) return bad("Çocuk yok", 404);
+        if(!await accountInFamily(env, acc.id, ch.family_id)) return bad("Yetkisiz", 403);
+        await deleteChildData(env, body.childId);
+        return json({ ok:true });
+      }
+      // sahip: aileyi + tum cocuklarini + tum verisini sil
+      if(route==="account/delete-family" && method==="POST"){
+        const link = await accountInFamily(env, acc.id, body.familyId);
+        if(!link) return bad("Yetkisiz", 403);
+        if(link.role!=="owner") return bad("Aileyi yalnız sahibi silebilir", 403);
+        await deleteFamilyData(env, body.familyId);
+        return json({ ok:true });
+      }
+      // hesabi sil: tek sahibi oldugu aileler tamamen silinir; cok-sahipli ailelerden yalniz cikar; hesap silinir
+      if(route==="account/delete-account" && method==="POST"){
+        const fams = (await env.DB.prepare("SELECT family_id, role FROM account_families WHERE account_id=?").bind(acc.id).all()).results||[];
+        for(const f of fams){
+          if(f.role==="owner"){
+            const owners = await cnt(env, "SELECT COUNT(*) n FROM account_families WHERE family_id=? AND role='owner'", f.family_id);
+            if(owners <= 1){ await deleteFamilyData(env, f.family_id); continue; }   // tek sahip -> aile komple silinir
+          }
+          await env.DB.prepare("DELETE FROM account_families WHERE account_id=? AND family_id=?").bind(acc.id, f.family_id).run();   // baska sahip var -> sadece bagi kopar
+        }
+        if(acc.email) await env.DB.prepare("DELETE FROM email_codes WHERE email=?").bind(acc.email).run();
+        await env.DB.prepare("DELETE FROM accounts WHERE id=?").bind(acc.id).run();
         return json({ ok:true });
       }
 

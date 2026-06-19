@@ -988,13 +988,15 @@ function renderAccountHome(){
     return;
   }
   body.innerHTML = accountFamilies.map(familyCard).join("") +
-    `<button class="btn-ghost" style="width:100%" onclick="createFamilyPrompt()">➕ Yeni aile oluştur</button>`;
+    `<button class="btn-ghost" style="width:100%" onclick="createFamilyPrompt()">➕ Yeni aile oluştur</button>
+     <div style="text-align:center;margin-top:26px"><button onclick="delAccount()" style="background:none;border:none;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer">Hesabımı sil</button></div>`;
 }
 function familyCard(f){
   const kids = f.children.map(c=>`
-    <div class="name-item" onclick="enterChildMode('${c.id}')" style="cursor:pointer">
+    <div class="name-item" onclick="enterChildMode('${c.id}')" style="cursor:pointer;display:flex;align-items:center;gap:10px">
       <div class="av">${escapeHtml(c.av||'🙂')}</div>
-      <div>${escapeHtml(c.name)}<small>${c.hasPin?'🔒 PIN':'profil'}</small></div></div>`).join("");
+      <div style="flex:1">${escapeHtml(c.name)}<small>${c.hasPin?'🔒 PIN':'profil'}</small></div>
+      <button onclick="event.stopPropagation();delChild('${c.id}')" title="Profili sil" style="background:none;border:none;font-size:15px;opacity:.45;cursor:pointer;padding:6px">🗑️</button></div>`).join("");
   const co = (f.coParents||[]).map(c=>`<span class="chip">${escapeHtml(c.email)}</span>`).join(" ");
   const pend = (f.pendingInvites||[]).map(i=>`<span class="chip pending">${escapeHtml(i.email)} · ${i.role==='child'?'çocuk':'ebeveyn'} · bekliyor</span>`).join(" ");
   return `<div class="card">
@@ -1006,6 +1008,7 @@ function familyCard(f){
       <button class="btn-primary" style="flex:1 1 45%" onclick="enterParentMode('${f.id}')">👨‍👩‍👧 Ebeveyn paneli</button>
       <button class="btn-ghost" style="flex:1 1 45%" onclick="addChildPrompt('${f.id}')">➕ Çocuk ekle</button></div>
     <button class="btn-ghost" style="width:100%;margin-top:8px" onclick="invitePrompt('${f.id}')">✉️ Aileye davet et</button>
+    ${f.role==='owner' ? `<button class="btn-ghost" style="width:100%;margin-top:8px;color:#ff8a8a;border-color:rgba(255,111,181,.4)" onclick="delFamily('${f.id}')">🗑️ Aileyi sil</button>`:''}
     ${(co||pend) ? `<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:5px">${co} ${pend}</div>`:''}</div>`;
 }
 function createFamilyPrompt(){
@@ -1024,6 +1027,25 @@ async function createFamily(){
     closeModal(); await loadAccount(); renderAccountHome(); toast("Aile oluşturuldu 🏡");
     if(wasFirst && r && r.family) setTimeout(()=>addChildPrompt(r.family.id), 450);
   }catch(e){ document.getElementById("famErr").textContent=e.message; }
+}
+async function delChild(childId){
+  let name="bu profil"; accountFamilies.forEach(f=>{ const c=(f.children||[]).find(x=>x.id===childId); if(c) name=c.name; });
+  if(!confirm('"'+name+'" profilini ve tüm ilerlemesini kalıcı olarak sil? Bu geri ALINAMAZ.')) return;
+  try{ await api("/account/delete-child",{method:"POST",body:{childId}}); await loadAccount(); renderAccountHome(); toast("Profil silindi"); }
+  catch(e){ toast(e.message||"Silinemedi"); }
+}
+async function delFamily(familyId){
+  const f=accountFamilies.find(x=>x.id===familyId); const name=f?f.name:"bu aile";
+  if(!confirm('"'+name+'" ailesini, TÜM çocuklarını ve tüm verisini kalıcı olarak sil? Bu geri ALINAMAZ.')) return;
+  if(!confirm("Son onay: gerçekten silinsin mi?")) return;
+  try{ await api("/account/delete-family",{method:"POST",body:{familyId}}); await loadAccount(); renderAccountHome(); toast("Aile silindi"); }
+  catch(e){ toast(e.message||"Silinemedi"); }
+}
+async function delAccount(){
+  if(!confirm("Hesabını ve YALNIZ senin sahibi olduğun aileleri kalıcı olarak sil? Bu geri ALINAMAZ.")) return;
+  if(!confirm("Son uyarı: hesabın ve verilerin tamamen silinecek. Devam edilsin mi?")) return;
+  try{ await api("/account/delete-account",{method:"POST"}); localStorage.removeItem(ACC_TOKEN_KEY); toast("Hesabın silindi 👋"); setTimeout(()=>location.replace("/"), 900); }
+  catch(e){ toast(e.message||"Silinemedi"); }
 }
 let _chAv="🦊";
 function addChildPrompt(familyId){
