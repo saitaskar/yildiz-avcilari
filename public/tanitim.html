@@ -428,13 +428,7 @@ function render(){
       <div class="cta-sub">${t.ctaSub}</div>
     </section>
 
-    <section class="section">
-      <div class="lead">${t.featLead}</div><div class="h2">${t.featH}</div>
-      <div class="grid" style="margin-top:24px">
-        ${t.feats.map(f=>`<div class="f"><span class="e">${f[0]}</span><h3>${f[1]}</h3><p>${f[2]}</p></div>`).join("")}
-      </div>
-    </section>
-
+    <!-- 2. NEDEN / AMAÇ (en başta) -->
     <section class="section">
       <div class="lead">${t.whyLead}</div><div class="h2">${t.whyH}</div>
       <p class="sub">${t.whySub}</p>
@@ -447,6 +441,7 @@ function render(){
       </div>
     </section>
 
+    <!-- 3. NASIL ÇALIŞIR -->
     <section class="section">
       <div class="lead">${t.howLead}</div><div class="h2">${t.howH}</div>
       <p class="sub">${t.howSub}</p>
@@ -455,6 +450,23 @@ function render(){
       </div>
     </section>
 
+    <!-- 4. ÇOCUĞUN EKRANI (+ görev türleri + motivasyon) -->
+    <section class="section">
+      <div class="lead">${t.kidLead}</div><div class="h2">${t.kidH}</div>
+      <p class="sub">${t.kidSub}</p>
+      <div class="screen">
+        <div class="screen-title">${t.kidScreenTitle}</div><div class="screen-sub">${t.kidScreenSub}</div>
+        ${t.kidTasks.map(k=>`<div class="tk"><div class="tk-ico">${k[0]}</div><div class="tk-b"><div class="tk-t">${k[1]}</div>${k[6]?`<div style="font-size:11.5px;color:var(--ink55);margin-top:1px">↳ ${k[6]}</div>`:""}<div class="tk-m"><span class="tk-chip${k[3]==='done'?' win':''}">${k[2]}</span>${k[4]?`<span class="tk-chip fire">${k[4]}</span>`:""}</div></div>${k[3]==='done'?'<div class="tk-done">✅</div>':`<div class="tk-btn">${k[5]}</div>`}</div>`).join("")}
+      </div>
+      <p class="sub" style="margin:22px auto 12px">${t.taskSub}</p>
+      <div class="pillrow">${t.pills.map(p=>`<span class="pill" style="background:rgba(255,255,255,.06);border-color:var(--line);color:var(--ink70)">${p}</span>`).join("")}</div>
+      <div style="text-align:center;font-family:'Fredoka',sans-serif;font-weight:600;font-size:16px;margin:26px 0 4px">${t.motH}</div>
+      <div class="mot">
+        ${t.mot.map(m=>`<div class="mc"><div class="e">${m[0]}</div><h3>${m[1]}</h3><p>${m[2]}</p></div>`).join("")}
+      </div>
+    </section>
+
+    <!-- 5. ÖDÜLÜ AÇ (+ ara ödüller) -->
     <section class="section">
       <div class="lead">${t.revLead}</div><div class="h2">${t.revH}</div>
       <p class="sub">${t.revSub}</p>
@@ -465,12 +477,9 @@ function render(){
         <div class="slider-row"><span id="pctLabel">%50</span><input type="range" id="slider" min="0" max="100" value="50"><span>🎁</span></div>
         <div class="silo-hint">${t.revHint}</div>
       </div>
-    </section>
-
-    <section class="section">
-      <div class="lead">${t.cpLead}</div><div class="h2">${t.cpH}</div>
-      <p class="sub">${t.cpSub}</p>
-      <div class="cp-card">
+      <div class="cp-card" style="margin-top:16px">
+        <div style="font-family:'Fredoka',sans-serif;font-weight:600;font-size:16px;margin-bottom:3px">${t.cpH}</div>
+        <p class="sub" style="margin:0 0 14px">${t.cpSub}</p>
         <div class="cp-bar">
           <div class="cp-fill"></div>
           <div class="cp-tick" style="left:20%"></div>
@@ -481,6 +490,7 @@ function render(){
       </div>
     </section>
 
+    <!-- 6. ALTI DÜNYA -->
     <section class="section">
       <div class="lead">${t.worldLead}</div><div class="h2">${t.worldH}</div>
       <p class="sub">${t.worldSub}</p>
@@ -489,15 +499,17 @@ function render(){
       </div>
     </section>
 
+    <!-- 7. AKILLI ÖĞRENME -->
     <section class="section">
-      <div class="lead">${t.kidLead}</div><div class="h2">${t.kidH}</div>
-      <p class="sub">${t.kidSub}</p>
-      <div class="screen">
-        <div class="screen-title">${t.kidScreenTitle}</div><div class="screen-sub">${t.kidScreenSub}</div>
-        ${t.kidTasks.map(k=>`<div class="tk"><div class="tk-ico">${k[0]}</div><div class="tk-b"><div class="tk-t">${k[1]}</div>${k[6]?`<div style="font-size:11.5px;color:var(--ink55);margin-top:1px">↳ ${k[6]}</div>`:""}<div class="tk-m"><span class="tk-chip${k[3]==='done'?' win':''}">${k[2]}</span>${k[4]?`<span class="tk-chip fire">${k[4]}</span>`:""}</div></div>${k[3]==='done'?'<div class="tk-done">✅</div>':`<div class="tk-btn">${k[5]}</div>`}</div>`).join("")}
+      <div class="lead">${t.learnLead}</div><div class="h2">${t.learnH}</div>
+      <p class="sub">${t.learnSub}</p>
+      <div class="chat">
+        <div class="chat-head">${t.chatHead}</div>
+        ${t.chat.map(m=>`<div class="bubble ${m[0]}">${m[1]}</div>`).join("")}
       </div>
     </section>
 
+    <!-- 8. AİLE ONAYI -->
     <section class="section">
       <div class="lead">${t.famLead}</div><div class="h2">${t.famH}</div>
       <p class="sub">${t.famSub}</p>
@@ -511,40 +523,7 @@ function render(){
       </div>
     </section>
 
-    <section class="section">
-      <div class="lead">${t.learnLead}</div><div class="h2">${t.learnH}</div>
-      <p class="sub">${t.learnSub}</p>
-      <div class="chat">
-        <div class="chat-head">${t.chatHead}</div>
-        ${t.chat.map(m=>`<div class="bubble ${m[0]}">${m[1]}</div>`).join("")}
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="lead">${t.motLead}</div><div class="h2">${t.motH}</div>
-      <p class="sub">${t.motSub}</p>
-      <div class="mot">
-        ${t.mot.map(m=>`<div class="mc"><div class="e">${m[0]}</div><h3>${m[1]}</h3><p>${m[2]}</p></div>`).join("")}
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="lead">${t.onbLead}</div><div class="h2">${t.onbH}</div>
-      <p class="sub">${t.onbSub}</p>
-      <div class="cine">
-        <div class="cine-badge">${t.cineBadge}</div>
-        <div class="cine-h">${t.cineH}</div>
-        <div style="color:#D7C9F2;font-size:14px;line-height:1.55">${t.cineTxt}</div>
-        <div style="margin-top:18px;font-size:12.5px;color:var(--ink55)">${t.cineSteps}</div>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="lead">${t.taskLead}</div><div class="h2">${t.taskH}</div>
-      <p class="sub">${t.taskSub}</p>
-      <div class="pillrow">${t.pills.map(p=>`<span class="pill" style="background:rgba(255,255,255,.06);border-color:var(--line);color:var(--ink70)">${p}</span>`).join("")}</div>
-    </section>
-
+    <!-- 9. GÜVEN -->
     <div class="trust">
       <h2>${t.trustH}</h2>
       <p style="color:var(--ink70);max-width:560px;margin:0 auto">${t.trustP}</p>
