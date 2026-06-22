@@ -1,0 +1,43 @@
+{
+  "packageId": "com.yildizavcilari.app",
+  "host": "yildizavcilari.com",
+  "name": "Yıldız Avcıları",
+  "launcherName": "Yıldız",
+  "display": "standalone",
+  "orientation": "portrait",
+  "themeColor": "#6C2BD9",
+  "themeColorDark": "#000000",
+  "navigationColor": "#6C2BD9",
+  "navigationColorDark": "#000000",
+  "navigationDividerColor": "#000000",
+  "navigationDividerColorDark": "#000000",
+  "backgroundColor": "#4A148C",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://yildizavcilari.com/icon-512.png",
+  "maskableIconUrl": "https://yildizavcilari.com/icon-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "yildiz"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://yildizavcilari.com/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://yildizavcilari.com/",
+  "minSdkVersion": 21,
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "appVersion": "1.0.0"
+}

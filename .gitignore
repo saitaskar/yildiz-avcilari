@@ -29,3 +29,10 @@ backend/migrations/
 
 # deploy ciktisi
 /dist/
+
+# Android TWA build: yalniz twa-manifest.json + build-aab.ps1 tracked.
+# KEYSTORE + SIFRE + AAB/APK + Bubblewrap-uretimi proje ASLA public repo'ya GIRMEZ
+# (proje `bubblewrap update` ile twa-manifest.json'dan yeniden uretilir).
+app/android-twa/*
+!app/android-twa/twa-manifest.json
+!app/android-twa/build-aab.ps1
