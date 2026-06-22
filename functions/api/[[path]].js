@@ -691,6 +691,25 @@ export async function onRequest(context){
         return json({ ok:true, family:{id:fid, name} });
       }
 
+      // ebeveyn: sezon / buyuk odul ayarla (aile-kapsamli; owner veya parent)
+      if(route==="account/season-set" && method==="POST"){
+        const { familyId } = body;
+        if(!await accountInFamily(env, acc.id, familyId)) return bad("Yetkisiz", 403);
+        const name = String(body.name||"").trim().slice(0,40) || "Sezon";
+        const prize = String(body.prize||"").trim().slice(0,60) || "Sürpriz";
+        let goal = parseInt(body.goal); if(isNaN(goal)) goal = 1000; goal = Math.max(50, Math.min(100000, goal));
+        let end = String(body.end||"").trim().slice(0,10);
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(end)) end = new Date(Date.now()+30*86400000).toISOString().slice(0,10);
+        const sr = await env.DB.prepare("SELECT id FROM seasons WHERE family_id=? AND active=1 LIMIT 1").bind(familyId).first();
+        if(sr){
+          await env.DB.prepare("UPDATE seasons SET name=?, prize=?, goal=?, end_date=? WHERE id=?").bind(name, prize, goal, end, sr.id).run();
+        } else {
+          await env.DB.prepare("INSERT INTO seasons (id,name,end_date,prize,goal,active,family_id) VALUES (?,?,?,?,?,1,?)")
+            .bind("s_"+Date.now()+"_"+Math.floor(Math.random()*1e6), name, end, prize, goal, familyId).run();
+        }
+        return json({ ok:true });
+      }
+
       // e-postasiz cocuk profili ekle (PIN opsiyonel)
       if(route==="account/add-child" && method==="POST"){
         const { familyId, name, age, av, pin } = body;
